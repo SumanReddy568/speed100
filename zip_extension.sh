@@ -6,6 +6,9 @@ MANIFEST_PATH="manifest.json"
 HTML_PATH="./popup/popup.html"
 CHANGELOG_PATH="CHANGELOG.md"
 
+# Exit on error
+set -e
+
 # Function to increment version number
 increment_version() {
   local version=$1
@@ -38,8 +41,10 @@ NEW_VERSION=$(increment_version "$CURRENT_VERSION")
 # Update manifest version
 jq --arg new_version "$NEW_VERSION" '.version = $new_version' "$MANIFEST_PATH" > temp.json && mv temp.json "$MANIFEST_PATH"
 
-# Update version in panel.html
-sed -i "s|<div class=\"version-info\">Version [0-9]\+\.[0-9]\+\.[0-9]\+</div>|<div class=\"version-info\">Version $NEW_VERSION</div>|g" "$HTML_PATH"
+# Update version in HTML file if it exists
+if [ -f "$HTML_PATH" ]; then
+  sed -i "s|<div class=\"version-info\">Version [0-9]\+\.[0-9]\+\.[0-9]\+</div>|<div class=\"version-info\">Version $NEW_VERSION</div>|g" "$HTML_PATH"
+fi
 
 # Update changelog
 if [ ! -f "$CHANGELOG_PATH" ]; then
@@ -59,16 +64,23 @@ fi
 
 # Remove old zip if exists
 if [ -f "$EXTENSION_NAME.zip" ]; then
-  git rm "$EXTENSION_NAME.zip"
+  rm -f "$EXTENSION_NAME.zip"
 fi
 
 # Create new zip file (excluding git and script files)
-zip -r "$EXTENSION_NAME.zip" ./* -x "*.git*" -x ".github/*" -x "*.sh" -x "$EXTENSION_NAME.zip"
+zip -r "$EXTENSION_NAME.zip" * \
+    -x "*.git*" \
+    -x ".github/*" \
+    -x "*.sh" \
+    -x "$EXTENSION_NAME.zip" \
+    -x "README.md" \
+    -x "CHANGELOG.md" \
+    -x "PRIVACY_POLICY.md"
 
 # Configure git
 git config --global user.name "GitHub Actions"
 git config --global user.email "actions@github.com"
 
-# Commit changes
-git add "$EXTENSION_NAME.zip" "$MANIFEST_PATH" "$PANEL_PATH" "$CHANGELOG_PATH"
-git commit -m "Auto-update: Version $NEW_VERSION [skip ci]"
+# Stage and commit changes
+git add -A
+git commit -m "Auto-update: Version $NEW_VERSION [skip ci]" || echo "No changes to commit"
