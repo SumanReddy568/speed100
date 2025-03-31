@@ -3,7 +3,7 @@
 # Configuration
 EXTENSION_NAME="speed_tester"
 MANIFEST_PATH="manifest.json"
-HTML_PATH="../popup/popup.html"
+HTML_PATH="./popup/popup.html"
 CHANGELOG_PATH="CHANGELOG.md"
 
 # Function to increment version number
