@@ -84,32 +84,97 @@
             </div>
         </div>
 
+        <button id="run-test-btn" class="test-button">Run Speed Test</button>
+        <div id="test-status" class="status-message"></div>
+        
         <div class="network-info">
             <h3>Network Information</h3>
-            <div class="info-row">
-                <span class="info-label">IP Address:</span>
-                <span id="ip-address" class="info-value">-</span>
+            
+            <!-- Basic Network Info -->
+            <div class="info-section">
+                <h4>Basic Information</h4>
+                <div class="info-row">
+                    <span class="info-label">IP Address:</span>
+                    <span id="ip-address" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Local Address:</span>
+                    <span id="local-address" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">DNS:</span>
+                    <span id="dns" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Signal Strength:</span>
+                    <span id="signal-strength" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Connection Type:</span>
+                    <span id="connection-type" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Network Name:</span>
+                    <span id="network-name" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Latency:</span>
+                    <span id="latency" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">ISP:</span>
+                    <span id="isp" class="info-value">-</span>
+                </div>
             </div>
-            <div class="info-row">
-                <span class="info-label">DNS:</span>
-                <span id="dns" class="info-value">-</span>
+        
+            <!-- Location Information -->
+            <div class="info-section">
+                <h4>Location Details</h4>
+                <div class="info-row">
+                    <span class="info-label">Country:</span>
+                    <span id="location-country" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">City:</span>
+                    <span id="location-city" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Region:</span>
+                    <span id="location-region" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Timezone:</span>
+                    <span id="location-timezone" class="info-value">-</span>
+                </div>
             </div>
-            <div class="info-row">
-                <span class="info-label">Signal Strength:</span>
-                <span id="signal-strength" class="info-value">-</span>
+        
+            <!-- Server Information -->
+            <div class="info-section">
+                <h4>Server Details</h4>
+                <div class="info-row">
+                    <span class="info-label">Server Name:</span>
+                    <span id="server-name" class="info-value">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Organization:</span>
+                    <span id="server-organization" class="info-value">-</span>
+                </div>
             </div>
-            <div class="info-row">
-                <span class="info-label">Connection Type:</span>
-                <span id="connection-type" class="info-value">-</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Latency:</span>
-                <span id="latency" class="info-value">-</span>
+        
+            <!-- Status Information -->
+            <div class="info-section">
+                <h4>Status</h4>
+                <div class="info-row">
+                    <span class="info-label">Detection Status:</span>
+                    <span id="detection-status" class="info-value">-</span>
+                </div>
+                <div class="info-row error-message" style="display: none;">
+                    <span class="info-label">Error:</span>
+                    <span id="error-message" class="info-value error">-</span>
+                </div>
             </div>
         </div>
 
-        <button id="run-test-btn" class="test-button">Run Speed Test</button>
-        <div id="test-status" class="status-message"></div>
         <!-- Version display added at the bottom -->
         <div class="version-container">
             <span>Version: </span>
