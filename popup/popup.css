@@ -1,0 +1,266 @@
+body {
+    width: 360px;
+    margin: 0;
+    padding: 15px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1e1e1e;
+    color: #e0e0e0;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    position: relative;
+}
+
+.settings-icon {
+    position: absolute;
+    top: 0px;
+    right: 10px;
+    font-size: 18px;
+    color: #888;
+    cursor: pointer;
+    transition: color 0.2s;
+    z-index: 10;
+}
+
+.settings-icon:hover {
+    color: #4285f4;
+}
+
+.speedometers-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.speedometer-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 50%;
+}
+
+.meter-title {
+    margin: 0 0 5px 0;
+    text-align: center;
+    font-size: 14px;
+    color: #a0a0a0;
+    font-weight: 600;
+}
+
+.version-container {
+    text-align: center;
+    font-size: 12px;
+    color: #777;
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+.speedometer-container {
+    position: relative;
+    width: 100%;
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    padding: 10px;
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.3), 0 0 8px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+#download-speedometer, #upload-speedometer {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 2px rgba(255,255,255,0.1));
+}
+
+.speed-display {
+    position: absolute;
+    top: 70%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background-color: #333;
+    border-radius: 8px;
+    padding: 5px 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    width: 80px;
+    border: 1px solid #444;
+}
+
+#download-speed, #upload-speed-display {
+    font-size: 22px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 0 3px rgba(255,255,255,0.2);
+}
+
+.speed-unit {
+    font-size: 10px;
+    color: #bbb;
+    margin-top: 2px;
+}
+
+.network-info {
+    background-color: #2a2a2a;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    border: 1px solid #333;
+}
+
+.network-info h3 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 16px;
+    color: #a0a0a0;
+    border-bottom: 1px solid #444;
+    padding-bottom: 8px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.info-label {
+    font-weight: bold;
+    color: #888;
+}
+
+.info-value {
+    color: #ddd;
+    background-color: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+}
+
+.test-button {
+    background: linear-gradient(to right, #4285f4, #34a853);
+    color: white;
+    border: none;
+    border-radius: 24px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s, transform 0.1s;
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.4);
+    outline: none;
+    width: 100%;
+}
+
+.test-button:hover {
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.6);
+}
+
+.test-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 3px rgba(66, 133, 244, 0.4);
+}
+
+.test-button:disabled {
+    background: linear-gradient(to right, #9e9e9e, #757575);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.status-message {
+    font-size: 12px;
+    color: #aaa;
+    text-align: center;
+    min-height: 16px;
+    font-style: italic;
+}
+
+.meter-arc {
+    stroke-width: 12;
+    stroke-dasharray: 0 251;
+    stroke-linecap: round;
+    fill: none;
+    transition: stroke-dasharray 0.5s ease-out;
+}
+
+#download-speedometer .meter-arc {
+    stroke: url(#download-gradient);
+}
+
+#upload-speedometer .meter-arc {
+    stroke: url(#upload-gradient);
+}
+
+svg text {
+    fill: #bbb;
+    font-weight: 600;
+}
+
+svg line {
+    stroke: #555;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+    background-color: #2a2a2a;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #444;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 300px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #fff;
+}
+
+.setting-option {
+    margin: 15px 0;
+}
+
+.setting-option label {
+    display: block;
+    margin-bottom: 5px;
+    color: #ddd;
+}
+
+.setting-option select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #444;
+}
+
+#save-settings {
+    margin-top: 20px;
+    width: 100%;
+}
