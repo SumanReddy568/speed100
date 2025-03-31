@@ -8,7 +8,7 @@ class SpeedTest {
         this.uploadEndpoint = 'https://speed.cloudflare.com/__up';
         this.progressCallback = null;
         this.lastUpdateTime = 0;
-        this.testDuration = 10000; // 10 seconds per test
+        this.testDuration = 30000; // 30 seconds per test
         this.sampleInterval = 250; // Update every 250ms
         this.uploadChunkSize = 2 * 1024 * 1024; // 2MB chunks for upload
         this.minTestDuration = 3000; // Minimum 3 seconds for meaningful results
@@ -298,6 +298,19 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         signalStrength: 'Unavailable',
         connectionType: 'Unavailable',
         latency: 'Unavailable',
+        // Added new metadata fields
+        networkName: 'Unavailable',
+        location: {
+            country: 'Unavailable',
+            city: 'Unavailable',
+            region: 'Unavailable',
+            timezone: 'Unavailable'
+        },
+        isp: 'Unavailable',
+        serverInfo: {
+            name: 'Unavailable',
+            organization: 'Unavailable'
+        },
         status: 'detecting'
     };
 
@@ -307,6 +320,7 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         // 1. Check Network Information API
         if (navigator.connection) {
             networkInfo.connectionType = navigator.connection.effectiveType || 'Unknown';
+            networkInfo.networkName = navigator.connection.type || 'Unknown';
 
             if (navigator.connection.downlink !== undefined) {
                 networkInfo.signalStrength = `${navigator.connection.downlink} Mbps`;
@@ -317,24 +331,29 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             }
         }
 
-        // 2. Get IP Address
+        // 2. Get IP Address and Extended Network Information
         try {
-            console.log("Fetching IP address...");
+            console.log("Fetching IP and network details...");
             const ipResponse = await Promise.race([
-                fetch('https://api.ipify.org?format=json', { mode: 'cors' }),
+                fetch('https://ipapi.co/json/', { mode: 'cors' }),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
             ]);
 
             if (ipResponse.ok) {
                 const data = await ipResponse.json();
                 networkInfo.ipAddress = data.ip || 'Unavailable';
-                console.log("IP fetched successfully:", networkInfo.ipAddress);
+                networkInfo.location.country = data.country_name || 'Unavailable';
+                networkInfo.location.city = data.city || 'Unavailable';
+                networkInfo.location.region = data.region || 'Unavailable';
+                networkInfo.location.timezone = data.timezone || 'Unavailable';
+                networkInfo.isp = data.org || 'Unavailable';
+                console.log("Network details fetched successfully");
             }
         } catch (ipError) {
-            console.warn("Primary IP detection failed:", ipError.message);
-            // Fallback
+            console.warn("Primary network detection failed:", ipError.message);
+            // Fallback to ipify for basic IP
             try {
-                const fallbackResponse = await fetch('https://ipapi.co/json/', { mode: 'cors' });
+                const fallbackResponse = await fetch('https://api.ipify.org?format=json', { mode: 'cors' });
                 if (fallbackResponse.ok) {
                     const data = await fallbackResponse.json();
                     networkInfo.ipAddress = data.ip || 'Unavailable';
@@ -345,14 +364,46 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             }
         }
 
-        // 3. Enhanced Latency Test
-        console.log("Performing latency test...");
-        if (networkInfo.latency === 'Unavailable') {
-            networkInfo.latency = await this.testLatency();
+        // 3. Enhanced Latency Test with Server Information
+        console.log("Performing enhanced latency test...");
+        const latencyResult = await this.testLatency();
+        if (latencyResult.latency !== 'Unavailable') {
+            networkInfo.latency = latencyResult.latency;
+            networkInfo.serverInfo = latencyResult.serverInfo;
         }
 
-        // 4. DNS Detection (Simplified)
-        networkInfo.dns = 'Detected'; // Placeholder
+        // 4. DNS Detection
+        try {
+            const dnsResponse = await fetch('https://dns.google/resolve?name=' + window.location.hostname);
+            if (dnsResponse.ok) {
+                networkInfo.dns = 'Google DNS';
+            }
+        } catch (dnsError) {
+            console.warn("DNS detection failed:", dnsError.message);
+        }
+
+        // 5. Get Local Network Info
+        try {
+            const rtcPeerConnection = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            
+            rtcPeerConnection.createDataChannel("");
+            rtcPeerConnection.createOffer()
+                .then(offer => rtcPeerConnection.setLocalDescription(offer))
+                .catch(err => console.warn("RTC local detection failed:", err));
+
+            rtcPeerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    const localIP = event.candidate.address;
+                    if (localIP) {
+                        networkInfo.localAddress = localIP;
+                    }
+                }
+            };
+        } catch (rtcError) {
+            console.warn("Local network detection failed:", rtcError.message);
+        }
 
         networkInfo.status = 'completed';
         console.log("Network detection completed:", networkInfo);
@@ -368,35 +419,67 @@ SpeedTest.prototype.getNetworkInfo = async function () {
 
 SpeedTest.prototype.testLatency = async function () {
     const testEndpoints = [
-        'https://www.google.com',
-        'https://www.cloudflare.com',
-        'https://www.amazon.com'
+        {
+            url: 'https://www.google.com',
+            name: 'Google',
+            organization: 'Google LLC'
+        },
+        {
+            url: 'https://www.cloudflare.com',
+            name: 'Cloudflare',
+            organization: 'Cloudflare, Inc.'
+        },
+        {
+            url: 'https://www.amazon.com',
+            name: 'Amazon',
+            organization: 'Amazon.com, Inc.'
+        }
     ];
 
     let latencies = [];
+    let bestServer = null;
+    let bestLatency = Infinity;
 
     for (const endpoint of testEndpoints) {
         try {
-            console.log(`Pinging ${endpoint}...`);
+            console.log(`Pinging ${endpoint.url}...`);
             const startTime = performance.now();
-            await fetch(endpoint, {
+            await fetch(endpoint.url, {
                 method: 'HEAD',
                 mode: 'no-cors',
                 cache: 'no-store'
             });
             const endTime = performance.now();
-            latencies.push(endTime - startTime);
+            const latency = endTime - startTime;
+            latencies.push(latency);
+
+            if (latency < bestLatency) {
+                bestLatency = latency;
+                bestServer = endpoint;
+            }
         } catch (error) {
-            console.warn(`Latency test to ${endpoint} failed:`, error.message);
+            console.warn(`Latency test to ${endpoint.url} failed:`, error.message);
         }
     }
 
     if (latencies.length > 0) {
         const avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
         console.log("Latency calculated:", avgLatency);
-        return `${avgLatency} ms`;
+        return {
+            latency: `${avgLatency} ms`,
+            serverInfo: {
+                name: bestServer.name,
+                organization: bestServer.organization
+            }
+        };
     }
-    return 'Unavailable';
+    return {
+        latency: 'Unavailable',
+        serverInfo: {
+            name: 'Unavailable',
+            organization: 'Unavailable'
+        }
+    };
 };
 
 self.SpeedTest = SpeedTest;
