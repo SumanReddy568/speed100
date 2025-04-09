@@ -1,7 +1,7 @@
 {
   "name": "Speed Tester",
   "short_name": "Speed Tester",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Real-Time Speed Thrills - Witness your download and upload speeds blaze across your screen in milliseconds",
   "manifest_version": 3,
   "permissions": [
