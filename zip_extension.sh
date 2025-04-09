@@ -43,7 +43,7 @@ jq --arg new_version "$NEW_VERSION" '.version = $new_version' "$MANIFEST_PATH" >
 
 # Update version in HTML file if it exists
 if [ -f "$HTML_PATH" ]; then
-  sed -i "s|<div class=\"version-info\">Version [0-9]\+\.[0-9]\+\.[0-9]\+</div>|<div class=\"version-info\">Version $NEW_VERSION</div>|g" "$HTML_PATH"
+ sed -i "s|<span id=\"app-version\">[0-9]\+\.[0-9]\+\.[0-9]\+</span>|<span id=\"app-version\">$NEW_VERSION</span>|g" "$HTML_PATH"
 fi
 
 # Update changelog
