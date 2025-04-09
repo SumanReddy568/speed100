@@ -220,13 +220,13 @@ class SpeedTest {
                 timestamp: Date.now()
             };
         }
-    
+
         // Reset speeds at start
         this.downloadSpeed = 0;
         this.uploadSpeed = 0;
-    
+
         this.testRunning = true;
-        
+
         try {
             // First check connectivity
             const isOnline = await this.checkConnectivity();
@@ -242,18 +242,18 @@ class SpeedTest {
                     }
                 };
             }
-    
+
             // Get network info first
             const networkInfo = await this.getNetworkInfo();
-            
+
             // Run speed tests
             await this.testDownloadSpeed();
-            
+
             // Only proceed with upload test if we got a reasonable download speed
             if (this.downloadSpeed > 0) {
                 await this.testUploadSpeed();
             }
-            
+
             return {
                 download: this.downloadSpeed,
                 upload: this.uploadSpeed,
@@ -293,25 +293,25 @@ class SpeedTest {
 
 SpeedTest.prototype.getNetworkInfo = async function () {
     const networkInfo = {
-        ipAddress: 'Unavailable',
-        dns: 'Unavailable',
-        signalStrength: 'Unavailable',
-        connectionType: 'Unavailable',
-        latency: 'Unavailable',
+        ipAddress: '-',
+        dns: '-',
+        signalStrength: '-',
+        connectionType: '-',
+        latency: '-',
         // Added new metadata fields
-        networkName: 'Unavailable',
+        networkName: '-',
         location: {
-            country: 'Unavailable',
-            city: 'Unavailable',
-            region: 'Unavailable',
-            timezone: 'Unavailable'
+            country: '-',
+            city: '-',
+            region: '-',
+            timezone: '-',
         },
-        isp: 'Unavailable',
+        isp: '-',
         serverInfo: {
-            name: 'Unavailable',
-            organization: 'Unavailable'
+            name: '-',
+            organization: '-',
         },
-        status: 'detecting'
+        status: '-',
     };
 
     try {
@@ -387,7 +387,7 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             const rtcPeerConnection = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
             });
-            
+
             rtcPeerConnection.createDataChannel("");
             rtcPeerConnection.createOffer()
                 .then(offer => rtcPeerConnection.setLocalDescription(offer))

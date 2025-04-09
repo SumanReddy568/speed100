@@ -94,6 +94,20 @@ async function runSpeedTest() {
             // Silent catch for when popup is closed
         });
 
+        const historyItem = {
+            downloadSpeed: speedTest.downloadSpeed,
+            uploadSpeed: speedTest.uploadSpeed,
+            timestamp: Date.now()
+        };
+        
+        chrome.storage.local.get(['speedTestHistory'], function(result) {
+            const history = result.speedTestHistory || [];
+            history.unshift(historyItem);
+            // Keep only last 10 items in storage (we'll display last 3)
+            const trimmedHistory = history.slice(0, 10);
+            chrome.storage.local.set({ speedTestHistory: trimmedHistory });
+        });
+
         return lastTestResult;
     } catch (error) {
         console.error('Speed test failed:', error);
@@ -139,6 +153,13 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getSpeed') {
         sendResponse(lastTestResult);
+        chrome.storage.local.get(['speedTestHistory'], function(result) {
+            const response = {
+                ...lastTestResult,
+                history: result.speedTestHistory || []
+            };
+            sendResponse(response);
+        });
         return true;
     } else if (request.type === 'runTest') {
         // Start the test and send immediate response
