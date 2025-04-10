@@ -243,13 +243,12 @@ class SpeedTest {
                 };
             }
 
-            // Get network info first
+            // Get network info without verbose logging
             const networkInfo = await this.getNetworkInfo();
 
             // Run speed tests
             await this.testDownloadSpeed();
 
-            // Only proceed with upload test if we got a reasonable download speed
             if (this.downloadSpeed > 0) {
                 await this.testUploadSpeed();
             }
@@ -298,7 +297,6 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         signalStrength: '-',
         connectionType: '-',
         latency: '-',
-        // Added new metadata fields
         networkName: '-',
         location: {
             country: '-',
@@ -315,9 +313,6 @@ SpeedTest.prototype.getNetworkInfo = async function () {
     };
 
     try {
-        console.log("Starting network detection...");
-
-        // 1. Check Network Information API
         if (navigator.connection) {
             networkInfo.connectionType = navigator.connection.effectiveType || 'Unknown';
             networkInfo.networkName = navigator.connection.type || 'Unknown';
@@ -331,9 +326,7 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             }
         }
 
-        // 2. Get IP Address and Extended Network Information
         try {
-            console.log("Fetching IP and network details...");
             const ipResponse = await Promise.race([
                 fetch('https://ipapi.co/json/', { mode: 'cors' }),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
@@ -347,32 +340,25 @@ SpeedTest.prototype.getNetworkInfo = async function () {
                 networkInfo.location.region = data.region || 'Unavailable';
                 networkInfo.location.timezone = data.timezone || 'Unavailable';
                 networkInfo.isp = data.org || 'Unavailable';
-                console.log("Network details fetched successfully");
             }
         } catch (ipError) {
-            console.warn("Primary network detection failed:", ipError.message);
-            // Fallback to ipify for basic IP
             try {
                 const fallbackResponse = await fetch('https://api.ipify.org?format=json', { mode: 'cors' });
                 if (fallbackResponse.ok) {
                     const data = await fallbackResponse.json();
                     networkInfo.ipAddress = data.ip || 'Unavailable';
-                    console.log("Fallback IP fetched:", networkInfo.ipAddress);
                 }
             } catch (fallbackError) {
                 console.warn("Fallback IP detection failed:", fallbackError.message);
             }
         }
 
-        // 3. Enhanced Latency Test with Server Information
-        console.log("Performing enhanced latency test...");
         const latencyResult = await this.testLatency();
         if (latencyResult.latency !== 'Unavailable') {
             networkInfo.latency = latencyResult.latency;
             networkInfo.serverInfo = latencyResult.serverInfo;
         }
 
-        // 4. DNS Detection
         try {
             const dnsResponse = await fetch('https://dns.google/resolve?name=' + window.location.hostname);
             if (dnsResponse.ok) {
@@ -382,7 +368,6 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             console.warn("DNS detection failed:", dnsError.message);
         }
 
-        // 5. Get Local Network Info
         try {
             const rtcPeerConnection = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -406,11 +391,9 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         }
 
         networkInfo.status = 'completed';
-        console.log("Network detection completed:", networkInfo);
         return networkInfo;
 
     } catch (error) {
-        console.error("Error getting network info:", error);
         networkInfo.status = 'error';
         networkInfo.error = error.message || 'Unknown error occurred';
         return networkInfo;
@@ -442,7 +425,6 @@ SpeedTest.prototype.testLatency = async function () {
 
     for (const endpoint of testEndpoints) {
         try {
-            console.log(`Pinging ${endpoint.url}...`);
             const startTime = performance.now();
             await fetch(endpoint.url, {
                 method: 'HEAD',
@@ -464,7 +446,6 @@ SpeedTest.prototype.testLatency = async function () {
 
     if (latencies.length > 0) {
         const avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
-        console.log("Latency calculated:", avgLatency);
         return {
             latency: `${avgLatency} ms`,
             serverInfo: {
