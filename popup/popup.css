@@ -332,7 +332,7 @@ svg line {
 }
 
 .graph-container {
-    height: 180px;
+    height: 200px;
     position: relative;
     margin: 15px 0 5px 0;
     background: #222;
@@ -399,11 +399,17 @@ svg line {
 
 .graph-time-labels {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     font-size: 11px;
     color: #666;
     margin-top: 10px;
-    padding: 0 20px;
+    padding: 0 40px;
+    text-align: center;
+}
+
+.graph-time-labels div {
+    flex: 1;
+    text-align: center;
 }
 
 .graph-bars {

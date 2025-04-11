@@ -2,7 +2,7 @@
   "name": "Speed Tester",
   "short_name": "Speed Tester",
   "version": "1.0.2",
-  "description": "Monitor your internet connection with real-time download and upload speed measurements",
+  "description": "Measure your internet connection speed with real-time download and upload testing",
   "manifest_version": 3,
   "permissions": [
     "storage",

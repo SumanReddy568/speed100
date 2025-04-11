@@ -126,12 +126,11 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.style.height = `${rect.height}px`;
         ctx.scale(dpr, dpr);
         
-        // Clear previous canvas content and labels
+        // Clear previous content
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        container.querySelectorAll('.speed-label').forEach(el => el.remove());
 
         const recentTests = speedTestHistory.slice(0, 3).reverse();
-        const padding = { top: 30, right: 20, bottom: 20, left: 40 };
+        const padding = { top: 30, right: 20, bottom: 30, left: 40 };
         const graphWidth = rect.width - padding.left - padding.right;
         const graphHeight = rect.height - padding.top - padding.bottom;
 
@@ -140,83 +139,81 @@ document.addEventListener('DOMContentLoaded', function () {
             ...recentTests.map(test => 
                 Math.max((test.downloadSpeed || 0) / 1000000, (test.uploadSpeed || 0) / 1000000)
             ),
-             1 // Minimum scale
+            1 // Minimum scale
         );
 
-        // Draw grid and labels
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-        
-        // Draw data points and lines
-        const points = {
-            download: [],
-            upload: []
-        };
+        // Draw bars
+        const barWidth = graphWidth / (recentTests.length * 3); // Space for both download and upload bars
+        const barGap = barWidth / 2;
 
         recentTests.forEach((test, i) => {
-            const x = padding.left + (i * (graphWidth / (recentTests.length - 1)));
-            const downloadY = rect.height - padding.bottom - 
-                ((test.downloadSpeed / 1000000 / maxSpeed) * graphHeight);
-            const uploadY = rect.height - padding.bottom - 
-                ((test.uploadSpeed / 1000000 / maxSpeed) * graphHeight);
+            const x = padding.left + (i * barWidth * 3);
+            const downloadHeight = (test.downloadSpeed / 1000000 / maxSpeed) * graphHeight;
+            const uploadHeight = (test.uploadSpeed / 1000000 / maxSpeed) * graphHeight;
 
-            points.download.push({ x, y: downloadY });
-            points.upload.push({ x, y: uploadY });
+            // Draw download bar
+            ctx.fillStyle = '#4caf50';
+            ctx.fillRect(
+                x,
+                rect.height - padding.bottom - downloadHeight,
+                barWidth,
+                downloadHeight
+            );
+
+            // Draw upload bar
+            ctx.fillStyle = '#2196f3';
+            ctx.fillRect(
+                x + barWidth + barGap,
+                rect.height - padding.bottom - uploadHeight,
+                barWidth,
+                uploadHeight
+            );
 
             // Add speed labels
-            const downloadLabel = document.createElement('div');
-            const uploadLabel = document.createElement('div');
-            downloadLabel.className = 'speed-label download';
-            uploadLabel.className = 'speed-label upload';
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
             
-            downloadLabel.textContent = `${(test.downloadSpeed / 1000000).toFixed(1)}`;
-            uploadLabel.textContent = `${(test.uploadSpeed / 1000000).toFixed(1)}`;
-            
-            downloadLabel.style.left = `${x}px`;
-            uploadLabel.style.left = `${x}px`;
-            
-            // Adjust vertical position to prevent overlap
-            const labelGap = 20;
-            if (Math.abs(downloadY - uploadY) < labelGap) {
-                downloadLabel.style.top = `${Math.min(downloadY, uploadY) - labelGap}px`;
-                uploadLabel.style.top = `${Math.max(downloadY, uploadY)}px`;
-            } else {
-                downloadLabel.style.top = `${downloadY}px`;
-                uploadLabel.style.top = `${uploadY}px`;
-            }
+            // Download speed label
+            ctx.fillText(
+                `${(test.downloadSpeed / 1000000).toFixed(1)}`,
+                x + barWidth / 2,
+                rect.height - padding.bottom - downloadHeight - 5
+            );
 
-            container.appendChild(downloadLabel);
-            container.appendChild(uploadLabel);
+            // Upload speed label
+            ctx.fillText(
+                `${(test.uploadSpeed / 1000000).toFixed(1)}`,
+                x + barWidth * 1.5 + barGap,
+                rect.height - padding.bottom - uploadHeight - 5
+            );
 
-            // Add time label
-            const timeLabel = document.createElement('div');
+            // Time label
             const date = new Date(test.timestamp);
+            const timeLabel = document.createElement('div');
             timeLabel.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             timeLabels.appendChild(timeLabel);
         });
 
-        // Draw lines
-        [
-            { points: points.download, color: '#4caf50' },
-            { points: points.upload, color: '#2196f3' }
-        ].forEach(({ points, color }) => {
+        // Draw horizontal grid lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 5; i++) {
+            const y = rect.height - padding.bottom - (i * graphHeight / 5);
             ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            points.forEach((point, i) => {
-                if (i === 0) ctx.moveTo(point.x, point.y);
-                else ctx.lineTo(point.x, point.y);
-            });
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(rect.width - padding.right, y);
             ctx.stroke();
-
-            // Draw points
-            points.forEach(point => {
-                ctx.beginPath();
-                ctx.fillStyle = color;
-                ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        });
+            
+            // Add speed scale
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'right';
+            ctx.fillText(
+                `${(maxSpeed * i / 5).toFixed(0)}`,
+                padding.left - 5,
+                y + 4
+            );
+        }
     }
 
     // Initialize graph collapsed state from storage
