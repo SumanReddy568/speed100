@@ -62,17 +62,21 @@ fi
   cat "$CHANGELOG_PATH"
 } > temp_changelog.md && mv temp_changelog.md "$CHANGELOG_PATH"
 
-# Remove old zip if exists
-if [ -f "$EXTENSION_NAME.zip" ]; then
-  rm -f "$EXTENSION_NAME.zip"
+# Create extensions directory if it doesn't exist
+EXTENSIONS_DIR="extensions"
+mkdir -p "$EXTENSIONS_DIR"
+
+# Remove old zip if exists in extensions directory
+if [ -f "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip" ]; then
+  rm -f "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip"
 fi
 
 # Create new zip file (excluding git and script files)
-zip -r "$EXTENSION_NAME.zip" * \
+zip -r "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip" * \
     -x "*.git*" \
     -x ".github/*" \
     -x "*.sh" \
-    -x "$EXTENSION_NAME.zip" \
+    -x "$EXTENSIONS_DIR/*" \
     -x "README.md" \
     -x "CHANGELOG.md" \
     -x "PRIVACY_POLICY.md"
