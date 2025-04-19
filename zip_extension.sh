@@ -64,15 +64,17 @@ fi
 
 # Create extensions directory if it doesn't exist
 EXTENSIONS_DIR="extensions"
-mkdir -p "$EXTENSIONS_DIR"
+VERSION_DIR="$EXTENSIONS_DIR/v$NEW_VERSION"
+mkdir -p "$VERSION_DIR"
 
-# Remove old zip if exists in extensions directory
-if [ -f "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip" ]; then
-  rm -f "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip"
+# Remove old zip if exists in version directory
+ZIP_FILE="$VERSION_DIR/$EXTENSION_NAME.zip"
+if [ -f "$ZIP_FILE" ]; then
+  rm -f "$ZIP_FILE"
 fi
 
 # Create new zip file (excluding git and script files)
-zip -r "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip" * \
+zip -r "$ZIP_FILE" * \
     -x "*.git*" \
     -x ".github/*" \
     -x "*.sh" \
@@ -80,6 +82,9 @@ zip -r "$EXTENSIONS_DIR/$EXTENSION_NAME-$NEW_VERSION.zip" * \
     -x "README.md" \
     -x "CHANGELOG.md" \
     -x "PRIVACY_POLICY.md"
+
+# Create a copy with version in filename for reference
+cp "$ZIP_FILE" "$EXTENSIONS_DIR/$EXTENSION_NAME-v$NEW_VERSION.zip"
 
 # Configure git
 git config --global user.name "GitHub Actions"

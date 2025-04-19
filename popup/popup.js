@@ -48,7 +48,19 @@ document.addEventListener('DOMContentLoaded', function () {
         timestamp: document.getElementById('timestamp'),
 
         graphBarsContainer: document.querySelector('.graph-bars'),
-        graphTimeLabels: document.querySelector('.graph-time-labels')
+        graphTimeLabels: document.querySelector('.graph-time-labels'),
+
+        // Load test elements
+        runLoadTestBtn: document.getElementById('run-load-test-btn'),
+        loadTestModal: document.getElementById('load-test-modal'),
+        startLoadTest: document.getElementById('start-load-test'),
+        loadSizeSelect: document.getElementById('load-size-select'),
+        loadTestStatus: document.getElementById('load-test-status'),
+        progressFill: document.querySelector('.progress-fill'),
+
+        // Load history elements
+        loadHistoryList: document.getElementById('load-history-list'),
+        loadHistoryGraph: document.querySelector('.load-history-graph')
     };
 
     // Speedometer configuration
@@ -62,6 +74,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     let speedTestHistory = [];
+    let loadTestHistory = [];
+    let isLoadTestRunning = false;
 
     // Network info cache
     let networkInfoCache = {
@@ -216,6 +230,43 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function updateLoadHistory() {
+        if (!elements.loadHistoryList) return;
+        
+        elements.loadHistoryList.innerHTML = '';
+        
+        if (!loadTestHistory || loadTestHistory.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'load-history-empty';
+            emptyState.innerHTML = `
+                <p>No load tests performed yet</p>
+                <button class="test-button secondary" onclick="document.getElementById('run-load-test-btn').click()">
+                    Start Load Test
+                </button>
+            `;
+            elements.loadHistoryList.appendChild(emptyState);
+            return;
+        }
+        
+        loadTestHistory.slice(0, 3).forEach(test => {
+            const item = document.createElement('div');
+            item.className = 'load-history-item';
+            
+            const date = new Date(test.timestamp);
+            item.innerHTML = `
+                <span class="info-label">File Size:</span>
+                <span class="info-value">${test.fileSizeMB} MB</span>
+                <span class="info-label">Average Speed:</span>
+                <span class="info-value">${test.averageSpeedMbps.toFixed(2)} Mbps</span>
+                <span class="info-label">Duration:</span>
+                <span class="info-value">${test.totalTime.toFixed(1)}s</span>
+                <div class="load-history-time">${date.toLocaleString()}</div>
+            `;
+            
+            elements.loadHistoryList.appendChild(item);
+        });
+    }
+
     // Initialize graph collapsed state from storage
     function initializeGraphState() {
         chrome.storage.local.get(['historyCollapsed'], function(result) {
@@ -242,15 +293,54 @@ document.addEventListener('DOMContentLoaded', function () {
         resizeObserver.observe(graphContainer);
     }
 
-    // Save collapsed state
-    document.querySelector('.history-header').addEventListener('click', () => {
-        const graph = document.querySelector('.speed-history-graph');
-        graph.classList.toggle('collapsed');
-        
-        if (!graph.classList.contains('collapsed')) {
-            setTimeout(updateHistoryGraph, 300);
-        }
-    });
+    // Update the click handlers for collapsible sections
+    function initializeCollapsibleSections() {
+        const sections = [
+            { 
+                id: 'speed-history-header',
+                element: document.querySelector('.speed-history-graph'),
+                storageKey: 'speedHistoryCollapsed',
+                updateFn: updateHistoryGraph
+            },
+            { 
+                id: 'load-history-header',
+                element: document.querySelector('.load-history-graph'),
+                storageKey: 'loadHistoryCollapsed',
+                updateFn: updateLoadHistory
+            },
+            { 
+                id: 'network-info-header',
+                element: document.querySelector('.network-info'),
+                storageKey: 'networkInfoCollapsed'
+            }
+        ];
+
+        sections.forEach(section => {
+            const header = document.getElementById(section.id);
+            if (header && section.element) {
+                header.addEventListener('click', () => {
+                    section.element.classList.toggle('collapsed');
+                    
+                    if (!section.element.classList.contains('collapsed') && section.updateFn) {
+                        setTimeout(section.updateFn, 300);
+                    }
+                    
+                    chrome.storage.local.set({
+                        [section.storageKey]: section.element.classList.contains('collapsed')
+                    });
+                });
+            }
+        });
+
+        // Initialize collapsed states
+        chrome.storage.local.get(sections.map(s => s.storageKey), function(result) {
+            sections.forEach(section => {
+                if (section.element && result[section.storageKey]) {
+                    section.element.classList.add('collapsed');
+                }
+            });
+        });
+    }
 
     // Initialize settings
     function initializeSettings() {
@@ -523,6 +613,91 @@ document.addEventListener('DOMContentLoaded', function () {
         if (event.target === elements.settingsModal) {
             elements.settingsModal.style.display = 'none';
         }
+        if (event.target === elements.loadTestModal && !isLoadTestRunning) {
+            elements.loadTestModal.style.display = 'none';
+        }
+    });
+
+    // Load test modal handlers
+    elements.runLoadTestBtn.addEventListener('click', () => {
+        if (!isLoadTestRunning) {
+            elements.loadTestModal.style.display = 'block';
+            elements.startLoadTest.textContent = 'Start Load Test';
+            elements.progressFill.style.width = '0';
+            elements.loadTestStatus.textContent = '';
+        }
+    });
+
+    document.querySelectorAll('.modal .close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', () => {
+            if (!isLoadTestRunning) {
+                closeBtn.closest('.modal').style.display = 'none';
+            }
+        });
+    });
+
+    elements.startLoadTest.addEventListener('click', async () => {
+        if (isLoadTestRunning) return;
+        
+        const fileSizeMB = parseInt(elements.loadSizeSelect.value, 10);
+        const speedTest = new window.SpeedTest();
+        
+        // Update UI for test start
+        isLoadTestRunning = true;
+        elements.startLoadTest.disabled = true;
+        elements.startLoadTest.textContent = 'Testing...';
+        elements.runTestBtn.disabled = true;
+        elements.runLoadTestBtn.disabled = true;
+        document.body.classList.add('test-running');
+        
+        try {
+            const result = await speedTest.runLoadTest(fileSizeMB, (progress) => {
+                elements.progressFill.style.width = `${progress.progress * 100}%`;
+                updateSpeedometer('download', progress.speedMbps);
+                elements.loadTestStatus.textContent = 
+                    `Speed: ${progress.speedMbps.toFixed(2)} Mbps | ` +
+                    `${(progress.bytesReceived / 1024 / 1024).toFixed(0)}MB of ${fileSizeMB}MB | ` +
+                    `Time: ${progress.elapsedSeconds.toFixed(1)}s`;
+            });
+
+            if (result.success) {
+                // Add to history
+                const historyEntry = {
+                    timestamp: Date.now(),
+                    fileSizeMB,
+                    averageSpeedMbps: result.averageSpeedMbps,
+                    totalTime: result.totalTime
+                };
+                
+                loadTestHistory.unshift(historyEntry);
+                loadTestHistory = loadTestHistory.slice(0, 3); // Keep only last 3 tests
+                
+                // Save to storage
+                chrome.storage.local.set({ loadTestHistory });
+                
+                // Update UI
+                updateLoadHistory();
+                elements.loadTestStatus.textContent = 
+                    `Complete! Average Speed: ${result.averageSpeedMbps.toFixed(2)} Mbps | ` +
+                    `Total Time: ${result.totalTime.toFixed(1)}s`;
+            } else {
+                elements.loadTestStatus.textContent = `Error: ${result.error}`;
+            }
+        } catch (error) {
+            elements.loadTestStatus.textContent = `Error: ${error.message}`;
+        } finally {
+            // Reset UI
+            isLoadTestRunning = false;
+            elements.startLoadTest.disabled = false;
+            elements.startLoadTest.textContent = 'Start Load Test';
+            elements.runTestBtn.disabled = false;
+            elements.runLoadTestBtn.disabled = false;
+            document.body.classList.remove('test-running');
+            
+            setTimeout(() => {
+                updateSpeedometer('download', 0);
+            }, 2000);
+        }
     });
 
     // Initialize
@@ -533,14 +708,29 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSpeedometer('upload', 0);
         initializeSettings();
         getInitialData();
-        initializeGraphState();
+        initializeCollapsibleSections();
         initializeGraphObserver();
+        initializeNetworkInfoState();
 
-        // Load speed test history
-        chrome.storage.local.get(['speedTestHistory'], function(result) {
+        // Load test histories
+        chrome.storage.local.get(['speedTestHistory', 'loadTestHistory'], function(result) {
             if (result.speedTestHistory) {
                 speedTestHistory = result.speedTestHistory;
                 updateHistoryGraph();
+            }
+            if (result.loadTestHistory) {
+                loadTestHistory = result.loadTestHistory;
+                updateLoadHistory();
+            }
+        });
+    }
+
+    // Initialize network info collapsed state
+    function initializeNetworkInfoState() {
+        chrome.storage.local.get(['networkInfoCollapsed'], function(result) {
+            const networkInfo = document.querySelector('.network-info');
+            if (result.networkInfoCollapsed) {
+                networkInfo.classList.add('collapsed');
             }
         });
     }

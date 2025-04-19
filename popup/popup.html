@@ -84,112 +84,162 @@
             </div>
         </div>
 
-        <button id="run-test-btn" class="test-button">Run Speed Test</button>
+        <!-- Add Load Test button next to main speed test button -->
+        <div class="button-group">
+            <button id="run-test-btn" class="test-button">Run Speed Test</button>
+            <button id="run-load-test-btn" class="test-button secondary">Run Load Test</button>
+        </div>
         <div id="test-status" class="status-message"></div>
         
-        <!-- Speed History Graph -->
-        <div class="speed-history-graph collapsed">
-            <div class="history-header">
-                <h3>Speed History</h3>
-                <i class="fas fa-chevron-down expand-icon"></i>
+        <div class="info-grid">
+            <!-- Speed History Graph -->
+            <div class="speed-history-graph collapsed">
+                <div class="history-header" id="speed-history-header">
+                    <h3>Speed History</h3>
+                    <i class="fas fa-chevron-down expand-icon"></i>
+                </div>
+                <div class="graph-content">
+                    <div class="graph-labels">
+                        <span>Download</span>
+                        <span>Upload</span>
+                    </div>
+                    <div class="graph-container">
+                        <canvas class="graph-canvas"></canvas>
+                    </div>
+                    <div class="graph-time-labels"></div>
+                </div>
             </div>
-            <div class="graph-content">
-                <div class="graph-labels">
-                    <span>Download</span>
-                    <span>Upload</span>
+
+            <!-- Load Test History -->
+            <div class="load-history-graph collapsed">
+                <div class="history-header" id="load-history-header">
+                    <h3>Load Test History</h3>
+                    <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
-                <div class="graph-container">
-                    <canvas class="graph-canvas"></canvas>
+                <div class="load-history-content">
+                    <div id="load-history-list"></div>
                 </div>
-                <div class="graph-time-labels"></div>
+            </div>
+
+            <div class="network-info collapsed">
+                <div class="info-header" id="network-info-header">
+                    <h3>Network Information</h3>
+                    <i class="fas fa-chevron-down expand-icon"></i>
+                </div>
+                <div class="info-content">
+                    <!-- Basic Network Info -->
+                    <div class="info-section">
+                        <h4>Basic Information</h4>
+                        <div class="info-row">
+                            <span class="info-label">IP Address:</span>
+                            <span id="ip-address" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Local Address:</span>
+                            <span id="local-address" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">DNS:</span>
+                            <span id="dns" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Signal Strength:</span>
+                            <span id="signal-strength" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Connection Type:</span>
+                            <span id="connection-type" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Network Name:</span>
+                            <span id="network-name" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Latency:</span>
+                            <span id="latency" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">ISP:</span>
+                            <span id="isp" class="info-value">-</span>
+                        </div>
+                    </div>
+                
+                    <!-- Location Information -->
+                    <div class="info-section">
+                        <h4>Location Details</h4>
+                        <div class="info-row">
+                            <span class="info-label">Country:</span>
+                            <span id="location-country" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">City:</span>
+                            <span id="location-city" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Region:</span>
+                            <span id="location-region" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Timezone:</span>
+                            <span id="location-timezone" class="info-value">-</span>
+                        </div>
+                    </div>
+                
+                    <!-- Server Information -->
+                    <div class="info-section">
+                        <h4>Server Details</h4>
+                        <div class="info-row">
+                            <span class="info-label">Server Name:</span>
+                            <span id="server-name" class="info-value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Organization:</span>
+                            <span id="server-organization" class="info-value">-</span>
+                        </div>
+                    </div>
+                
+                    <!-- Status Information -->
+                    <div class="info-section">
+                        <h4>Status</h4>
+                        <div class="info-row">
+                            <span class="info-label">Detection Status:</span>
+                            <span id="detection-status" class="info-value">-</span>
+                        </div>
+                        <div class="info-row error-message" style="display: none;">
+                            <span class="info-label">Error:</span>
+                            <span id="error-message" class="info-value error">-</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="network-info">
-            <h3>Network Information</h3>
-            
-            <!-- Basic Network Info -->
-            <div class="info-section">
-                <h4>Basic Information</h4>
-                <div class="info-row">
-                    <span class="info-label">IP Address:</span>
-                    <span id="ip-address" class="info-value">-</span>
+        <!-- Load Test Modal -->
+        <div id="load-test-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h3>Network Load Test</h3>
+                <div class="load-test-info">
+                    <p>This test will download large files to measure sustained network performance.</p>
+                    <div class="setting-option">
+                        <label for="load-size-select">Test Size:</label>
+                        <select id="load-size-select">
+                            <option value="100">100 MB</option>
+                            <option value="500" selected>500 MB</option>
+                            <option value="1024">1 GB</option>
+                            <option value="2048">2 GB</option>
+                            <option value="5120">5 GB</option>
+                            <option value="10240">10 GB</option>
+                        </select>
+                    </div>
+                    <div class="load-test-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <div id="load-test-status" class="status-message"></div>
+                    </div>
                 </div>
-                <div class="info-row">
-                    <span class="info-label">Local Address:</span>
-                    <span id="local-address" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">DNS:</span>
-                    <span id="dns" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Signal Strength:</span>
-                    <span id="signal-strength" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Connection Type:</span>
-                    <span id="connection-type" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Network Name:</span>
-                    <span id="network-name" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Latency:</span>
-                    <span id="latency" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">ISP:</span>
-                    <span id="isp" class="info-value">-</span>
-                </div>
-            </div>
-        
-            <!-- Location Information -->
-            <div class="info-section">
-                <h4>Location Details</h4>
-                <div class="info-row">
-                    <span class="info-label">Country:</span>
-                    <span id="location-country" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">City:</span>
-                    <span id="location-city" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Region:</span>
-                    <span id="location-region" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Timezone:</span>
-                    <span id="location-timezone" class="info-value">-</span>
-                </div>
-            </div>
-        
-            <!-- Server Information -->
-            <div class="info-section">
-                <h4>Server Details</h4>
-                <div class="info-row">
-                    <span class="info-label">Server Name:</span>
-                    <span id="server-name" class="info-value">-</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Organization:</span>
-                    <span id="server-organization" class="info-value">-</span>
-                </div>
-            </div>
-        
-            <!-- Status Information -->
-            <div class="info-section">
-                <h4>Status</h4>
-                <div class="info-row">
-                    <span class="info-label">Detection Status:</span>
-                    <span id="detection-status" class="info-value">-</span>
-                </div>
-                <div class="info-row error-message" style="display: none;">
-                    <span class="info-label">Error:</span>
-                    <span id="error-message" class="info-value error">-</span>
-                </div>
+                <button id="start-load-test" class="test-button">Start Load Test</button>
             </div>
         </div>
 
@@ -220,6 +270,7 @@
             <button id="save-settings" class="test-button">Save Settings</button>
         </div>
     </div>
+    <script src="../speed-test.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>

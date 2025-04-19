@@ -185,6 +185,111 @@ class SpeedTest {
         }
     }
 
+    async testLoadSpeed(fileSizeMB) {
+        const fileSizeBytes = fileSizeMB * 1024 * 1024; // Convert MB to bytes
+        const startTime = performance.now();
+        let bytesReceived = 0;
+
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), this.testDuration + 2000);
+
+            const response = await fetch(`${this.testFileUrl}${fileSizeBytes}&t=${Date.now()}`, {
+                signal: controller.signal,
+                mode: 'cors'
+            });
+
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+            const reader = response.body.getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                bytesReceived += value.length;
+            }
+
+            clearTimeout(timeout);
+
+            const elapsed = (performance.now() - startTime) / 1000; // Time in seconds
+            const speedMbps = (bytesReceived * 8) / (elapsed * 1024 * 1024); // Convert to Mbps
+
+            return {
+                fileSizeMB,
+                speedMbps,
+                elapsed
+            };
+        } catch (error) {
+            console.error('Load test failed:', error);
+            return {
+                fileSizeMB,
+                speedMbps: 0,
+                elapsed: 0,
+                error: error.message
+            };
+        }
+    }
+
+    async runLoadTest(fileSizeMB, progressCallback) {
+        if (this.testRunning) return null;
+        
+        this.testRunning = true;
+        const startTime = performance.now();
+        let bytesReceived = 0;
+        const totalBytes = fileSizeMB * 1024 * 1024;
+        
+        try {
+            const controller = new AbortController();
+            const response = await fetch(`${this.testFileUrl}${totalBytes}&t=${Date.now()}`, {
+                signal: controller.signal,
+                mode: 'cors'
+            });
+
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            
+            const reader = response.body.getReader();
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                
+                bytesReceived += value.length;
+                const progress = bytesReceived / totalBytes;
+                const currentTime = performance.now();
+                const elapsedSeconds = (currentTime - startTime) / 1000;
+                const speedMbps = (bytesReceived * 8) / (elapsedSeconds * 1000000);
+                
+                if (progressCallback) {
+                    progressCallback({
+                        progress,
+                        speedMbps,
+                        bytesReceived,
+                        totalBytes,
+                        elapsedSeconds
+                    });
+                }
+            }
+
+            const totalTime = (performance.now() - startTime) / 1000;
+            const averageSpeedMbps = (totalBytes * 8) / (totalTime * 1000000);
+
+            return {
+                success: true,
+                averageSpeedMbps,
+                totalTime,
+                fileSizeMB
+            };
+
+        } catch (error) {
+            console.error('Load test failed:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        } finally {
+            this.testRunning = false;
+        }
+    }
+
     generateTestData(size) {
         const chunkSize = 65536; // 64KB chunks
         const data = new Uint8Array(size);
