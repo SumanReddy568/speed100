@@ -1,3 +1,6 @@
+## [1.0.4] - 2025-04-19
+- new load test feature
+
 ## [1.0.3] - 2025-04-11
 - Merge branch master of https://github.com/SumanReddy568/speed100
 
