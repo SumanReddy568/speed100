@@ -1,4 +1,7 @@
 ## [1.0.4] - 2025-04-19
+- start load test removal
+
+## [1.0.4] - 2025-04-19
 - add unstage file
 
 ## [1.0.4] - 2025-04-19
