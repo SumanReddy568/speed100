@@ -124,6 +124,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const canvas = document.querySelector('.graph-canvas');
         const container = document.querySelector('.graph-container');
         const timeLabels = document.querySelector('.graph-time-labels');
+        const emptyState = document.getElementById('speed-history-empty-state');
+        const graphContent = document.querySelector('.graph-content-data');
+        
+        if (!speedTestHistory || speedTestHistory.length === 0) {
+            if (emptyState) emptyState.style.display = 'flex';
+            if (graphContent) graphContent.style.display = 'none';
+            return;
+        }
+
+        if (emptyState) emptyState.style.display = 'none';
+        if (graphContent) graphContent.style.display = 'block';
         
         if (!canvas || !container || !speedTestHistory || speedTestHistory.length === 0) return;
         
@@ -237,13 +248,8 @@ document.addEventListener('DOMContentLoaded', function () {
         
         if (!loadTestHistory || loadTestHistory.length === 0) {
             const emptyState = document.createElement('div');
-            emptyState.className = 'load-history-empty';
-            emptyState.innerHTML = `
-                <p>No load tests performed yet</p>
-                <button class="test-button secondary" onclick="document.getElementById('run-load-test-btn').click()">
-                    Start Load Test
-                </button>
-            `;
+            emptyState.className = 'empty-state';
+            emptyState.innerHTML = '<span class="no-data-message">No test history available</span>';
             elements.loadHistoryList.appendChild(emptyState);
             return;
         }

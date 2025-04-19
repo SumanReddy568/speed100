@@ -710,11 +710,24 @@ svg line {
 }
 
 .load-history-empty p {
-    margin: 0 0 15px 0;
+    margin: 0;
     font-style: italic;
 }
 
-.load-history-empty .test-button {
-    max-width: 200px;
-    margin: 0 auto;
+.load-history-list {
+    min-height: 50px;
+    position: relative;
+}
+
+.empty-state {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #666;
+    font-style: italic;
+    padding: 20px;
+}
+
+.no-data-message {
+    text-align: center;
 }

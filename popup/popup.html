@@ -99,14 +99,19 @@
                     <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
                 <div class="graph-content">
-                    <div class="graph-labels">
-                        <span>Download</span>
-                        <span>Upload</span>
+                    <div id="speed-history-empty-state" class="empty-state">
+                        <span class="no-data-message">No speed test history available</span>
                     </div>
-                    <div class="graph-container">
-                        <canvas class="graph-canvas"></canvas>
+                    <div class="graph-content-data" style="display: none;">
+                        <div class="graph-labels">
+                            <span>Download</span>
+                            <span>Upload</span>
+                        </div>
+                        <div class="graph-container">
+                            <canvas class="graph-canvas"></canvas>
+                        </div>
+                        <div class="graph-time-labels"></div>
                     </div>
-                    <div class="graph-time-labels"></div>
                 </div>
             </div>
 
@@ -119,7 +124,7 @@
                 <div class="load-history-content">
                     <div id="load-history-list" class="load-history-list">
                         <div class="empty-state" id="load-history-empty-state">
-                            No load tests performed yet
+                            <span class="no-data-message">No test history available</span>
                         </div>
                     </div>
                 </div>
