@@ -62,13 +62,15 @@ fi
   cat "$CHANGELOG_PATH"
 } > temp_changelog.md && mv temp_changelog.md "$CHANGELOG_PATH"
 
-# Create extensions directory if it doesn't exist
+# Create extensions directory and version directory
 EXTENSIONS_DIR="extensions"
 VERSION_DIR="$EXTENSIONS_DIR/v$NEW_VERSION"
 mkdir -p "$VERSION_DIR"
 
-# Remove old zip if exists in version directory
+# Set zip file path in version directory
 ZIP_FILE="$VERSION_DIR/$EXTENSION_NAME.zip"
+
+# Remove old zip if exists
 if [ -f "$ZIP_FILE" ]; then
   rm -f "$ZIP_FILE"
 fi
@@ -82,9 +84,6 @@ zip -r "$ZIP_FILE" * \
     -x "README.md" \
     -x "CHANGELOG.md" \
     -x "PRIVACY_POLICY.md"
-
-# Create a copy with version in filename for reference
-cp "$ZIP_FILE" "$EXTENSIONS_DIR/$EXTENSION_NAME-v$NEW_VERSION.zip"
 
 # Configure git
 git config --global user.name "GitHub Actions"
