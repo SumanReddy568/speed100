@@ -1,7 +1,7 @@
 {
   "name": "Speed Tester",
   "short_name": "Speed Tester",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Measure your internet connection speed with real-time download and upload testing",
   "manifest_version": 3,
   "permissions": [
