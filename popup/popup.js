@@ -60,7 +60,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Load history elements
         loadHistoryList: document.getElementById('load-history-list'),
-        loadHistoryGraph: document.querySelector('.load-history-graph')
+        loadHistoryGraph: document.querySelector('.load-history-graph'),
+
+        // AI Insights elements
+        aiPerformance: document.getElementById('ai-performance'),
+        aiRecommendations: document.getElementById('ai-recommendations'),
+        aiPredictions: document.getElementById('ai-predictions'),
+        aiInsightsHeader: document.getElementById('ai-insights-header'),
+        aiInsights: document.querySelector('.ai-insights')
     };
 
     // Speedometer configuration
@@ -299,6 +306,76 @@ document.addEventListener('DOMContentLoaded', function () {
         resizeObserver.observe(graphContainer);
     }
 
+    // Add function to update AI insights in UI
+    function updateAIInsights(analysis) {
+        if (!analysis || !elements.aiPerformance) {
+            console.warn("AI analysis data is missing or AI elements are not initialized.");
+            return;
+        }
+
+        // Performance Analysis
+        let performanceHTML = `<div class="ai-performance-rating">
+            <span class="rating-score">${analysis.performance.rating.overall.toFixed(1)}</span>
+            <span>Overall Rating</span>
+        </div>`;
+
+        if (analysis.performance.issues && analysis.performance.issues.length > 0) {
+            analysis.performance.issues.forEach(issue => {
+                performanceHTML += `<p><i class="fas fa-exclamation-triangle"></i> ${issue.message}</p>`;
+            });
+        }
+
+        if (analysis.performance.strengths && analysis.performance.strengths.length > 0) {
+            analysis.performance.strengths.forEach(strength => {
+                performanceHTML += `<p><i class="fas fa-check-circle"></i> ${strength.message}</p>`;
+            });
+        }
+
+        elements.aiPerformance.innerHTML = performanceHTML;
+
+        // Recommendations
+        let recommendationsHTML = '';
+        if (analysis.recommendations && analysis.recommendations.length > 0) {
+            analysis.recommendations.forEach(rec => {
+                recommendationsHTML += `
+                    <div class="ai-recommendation">
+                        <h5>
+                            <i class="fas fa-lightbulb"></i>
+                            ${rec.title}
+                        </h5>
+                        <ul>
+                            ${rec.steps.map(step => `<li>${step}</li>`).join('')}
+                        </ul>
+                    </div>`;
+            });
+        } else {
+            recommendationsHTML = '<p>No recommendations available at this time.</p>';
+        }
+        elements.aiRecommendations.innerHTML = recommendationsHTML;
+
+        // Predictions
+        let predictionsHTML = '';
+        if (analysis.prediction && analysis.prediction.downloadSpeed) {
+            predictionsHTML = `
+                <p>Predicted Download: ${(analysis.prediction.downloadSpeed / 1000000).toFixed(1)} Mbps</p>
+                <p>Predicted Upload: ${(analysis.prediction.uploadSpeed / 1000000).toFixed(1)} Mbps</p>
+                <span class="prediction-confidence confidence-${analysis.prediction.confidence}">
+                    ${analysis.prediction.confidence} confidence
+                </span>`;
+        } else {
+            predictionsHTML = '<p>Not enough data for predictions</p>';
+        }
+        elements.aiPredictions.innerHTML = predictionsHTML;
+    }
+
+    function updateAIInsightsContent() {
+        chrome.runtime.sendMessage({ type: 'getSpeed' }, function (response) {
+            if (response && response.aiAnalysis) {
+                updateAIInsights(response.aiAnalysis);
+            }
+        });
+    }
+
     // Update the click handlers for collapsible sections
     function initializeCollapsibleSections() {
         const sections = [
@@ -318,6 +395,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 id: 'network-info-header',
                 element: document.querySelector('.network-info'),
                 storageKey: 'networkInfoCollapsed'
+            },
+            {
+                id: 'ai-insights-header',
+                element: document.querySelector('.ai-insights'),
+                storageKey: 'aiInsightsCollapsed',
+                updateFn: updateAIInsightsContent
             }
         ];
 
@@ -348,65 +431,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Initialize settings
-    function initializeSettings() {
-        chrome.storage.sync.get(['testInterval'], function (result) {
-            elements.testInterval.value = result.testInterval || '30';
-            updateTimestamp();
-        });
-    }
-
-    // Update timestamp
-    function updateTimestamp() {
-        if (elements.timestamp) {
-            const now = new Date();
-            elements.timestamp.textContent = now.toISOString().replace('T', ' ').substr(0, 19) + ' UTC';
-        }
-    }
-
-    // Speedometer functions
-    function updateSpeedometer(type, speedMbps) {
-        const isDownload = type === 'download';
-        const maxSpeed = isDownload ? config.downloadMaxSpeed : config.uploadMaxSpeed;
-        const needle = isDownload ? elements.downloadNeedle : elements.uploadNeedle;
-        const meter = isDownload ? elements.downloadMeter : elements.uploadMeter;
-        const display = isDownload ? elements.downloadSpeed : elements.uploadSpeedDisplay;
-
-        const clampedSpeed = Math.min(speedMbps, maxSpeed);
-        display.textContent = clampedSpeed.toFixed(1);
-
-        const rotation = config.minRotation + (clampedSpeed / maxSpeed * (config.maxRotation - config.minRotation));
-        needle.setAttribute('transform', `rotate(${rotation} 100 100)`);
-
-        const arcFill = (clampedSpeed / maxSpeed) * 251;
-        meter.style.strokeDasharray = `${arcFill} ${251 - arcFill}`;
-    }
-
-    function animateSpeedometer(type, targetSpeed) {
-        const isDownload = type === 'download';
-        const currentSpeed = isDownload ?
-            parseFloat(elements.downloadSpeed.textContent) :
-            parseFloat(elements.uploadSpeedDisplay.textContent);
-
-        const duration = 1000;
-        const startTime = performance.now();
-
-        function animate(currentTime) {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const current = currentSpeed + (targetSpeed - currentSpeed) * progress;
-
-            updateSpeedometer(type, current);
-
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        }
-
-        requestAnimationFrame(animate);
-    }
-
-    // Network info functions
     function updateNetworkInfo(info) {
         // Default empty values
         const emptyValues = {
@@ -476,7 +500,7 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.detectionStatus.textContent = info.status || 'detecting';
         }
 
-        updateTimestamp();
+        updateTimestamp(elements);
 
         // Handle error states
         if (elements.networkInfoContainer && elements.networkInfoContainer.style) {
@@ -495,6 +519,48 @@ document.addEventListener('DOMContentLoaded', function () {
                     (info.ipAddress !== '-' || info.connectionType !== '-') ? 'block' : 'none';
             }
         }
+    }
+
+    // Speedometer functions
+    function updateSpeedometer(type, speedMbps) {
+        const isDownload = type === 'download';
+        const maxSpeed = isDownload ? config.downloadMaxSpeed : config.uploadMaxSpeed;
+        const needle = isDownload ? elements.downloadNeedle : elements.uploadNeedle;
+        const meter = isDownload ? elements.downloadMeter : elements.uploadMeter;
+        const display = isDownload ? elements.downloadSpeed : elements.uploadSpeedDisplay;
+
+        const clampedSpeed = Math.min(speedMbps, maxSpeed);
+        display.textContent = clampedSpeed.toFixed(1);
+
+        const rotation = config.minRotation + (clampedSpeed / maxSpeed * (config.maxRotation - config.minRotation));
+        needle.setAttribute('transform', `rotate(${rotation} 100 100)`);
+
+        const arcFill = (clampedSpeed / maxSpeed) * 251;
+        meter.style.strokeDasharray = `${arcFill} ${251 - arcFill}`;
+    }
+
+    function animateSpeedometer(type, targetSpeed) {
+        const isDownload = type === 'download';
+        const currentSpeed = isDownload ?
+            parseFloat(elements.downloadSpeed.textContent) :
+            parseFloat(elements.uploadSpeedDisplay.textContent);
+
+        const duration = 1000;
+        const startTime = performance.now();
+
+        function animate(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const current = currentSpeed + (targetSpeed - currentSpeed) * progress;
+
+            updateSpeedometer(type, current);
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        }
+
+        requestAnimationFrame(animate);
     }
 
     // Event handlers
@@ -592,6 +658,10 @@ document.addEventListener('DOMContentLoaded', function () {
             updateSpeedometer('upload', uploadSpeedMbps);
 
             elements.testStatus.textContent = request.message || 'Testing...';
+        }
+
+        if (request.aiAnalysis) {
+            updateAIInsights(request.aiAnalysis);
         }
     });
 
@@ -712,7 +782,7 @@ document.addEventListener('DOMContentLoaded', function () {
         addGradientDefs();
         updateSpeedometer('download', 0);
         updateSpeedometer('upload', 0);
-        initializeSettings();
+        initializeSettings(elements);
         getInitialData();
         initializeCollapsibleSections();
         initializeGraphObserver();
@@ -799,3 +869,19 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize the popup
     initialize();
 });
+
+// Initialize settings
+function initializeSettings(elements) {
+    chrome.storage.sync.get(['testInterval'], function (result) {
+        elements.testInterval.value = result.testInterval || '30';
+        updateTimestamp(elements);
+    });
+}
+
+// Update timestamp
+function updateTimestamp(elements) {
+    if (elements.timestamp) {
+        const now = new Date();
+        elements.timestamp.textContent = now.toISOString().replace('T', ' ').substr(0, 19) + ' UTC';
+    }
+}

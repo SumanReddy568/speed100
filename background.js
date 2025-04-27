@@ -1,6 +1,7 @@
-importScripts('speed-test.js');
+importScripts('speed-test.js', 'services/ai-analysis.js');
 
 const speedTest = new self.SpeedTest();
+const aiAnalysis = new self.NetworkAIAnalysis();
 
 let lastTestResult = {
     downloadSpeed: 0,
@@ -86,10 +87,15 @@ async function runSpeedTest() {
         // Update badge with final download speed
         updateBadge(speedTest.downloadSpeed / 1000000);
 
-        // Send final update with network info
+        // Add AI analysis
+        const analysis = aiAnalysis.analyzeSpeedTest(lastTestResult);
+        lastTestResult.aiAnalysis = analysis;
+
+        // Send final update with network info and AI analysis
         chrome.runtime.sendMessage({
             type: 'speedUpdate',
-            ...lastTestResult
+            ...lastTestResult,
+            aiAnalysis: analysis
         }).catch(() => {
             // Silent catch for when popup is closed
         });
@@ -149,16 +155,15 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     }
 });
 
-// Handle messages from popup
+// Update message handler to send AI analysis
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getSpeed') {
-        sendResponse(lastTestResult);
         chrome.storage.local.get(['speedTestHistory'], function(result) {
-            const response = {
+            sendResponse({
                 ...lastTestResult,
-                history: result.speedTestHistory || []
-            };
-            sendResponse(response);
+                history: result.speedTestHistory || [],
+                aiAnalysis: lastTestResult.aiAnalysis // Send AI analysis
+            });
         });
         return true;
     } else if (request.type === 'runTest') {
@@ -170,7 +175,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (request.type === 'updateInterval') {
         chrome.alarms.clear('nextSpeedTest');
         if (request.interval > 0) {
-            chrome.alarms.create('nextSpeedTest', { periodInMinutes: request.interval });
+            chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(request.interval) });
         }
         sendResponse({ status: 'updated' });
         return true;
