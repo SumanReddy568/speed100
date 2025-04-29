@@ -1,4 +1,3 @@
-
 ### PRIVACY_POLICY.md
 ```markdown
 # Privacy Policy for Speed Test Chrome Extension
@@ -19,12 +18,17 @@ This extension collects and processes the following information:
 - DNS information
 - Approximate location (based on IP, not precise)
 
+### AI Insights Data:
+- Historical speed test data
+- Time of day patterns
+
 ## 2. How We Use Information
 
 All data is used solely for:
 - Providing speed test results to you
 - Displaying network information in the extension
 - Improving the accuracy of speed measurements
+- Providing AI-driven analysis and recommendations
 
 ## 3. Data Storage
 

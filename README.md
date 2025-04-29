@@ -12,6 +12,7 @@ A lightweight Chrome extension that measures your internet connection's download
 - ⚙️ Configurable automatic testing intervals
 - 📈 Historical data visualization (if implemented)
 - 🔄 Background testing with notifications
+- 🧠 **AI Insights:** Provides intelligent analysis of your network performance, including personalized recommendations and predictions.
 
 ## Installation
 
@@ -49,3 +50,4 @@ Configure in settings:
 ```bash
 git clone [https://github.com/SumanReddy568/speed100]
 cd speed100
+```
