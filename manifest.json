@@ -1,8 +1,8 @@
 {
   "name": "Speed Tester",
   "short_name": "Speed Tester",
-  "version": "1.0.5",
-  "description": "Measure your internet connection speed with real-time download and upload testing, plus AI-powered network analysis and recommendations.",
+  "version": "1.0.4",
+  "description": "Measure your internet speed with real-time testing & AI-powered network analysis and recommendations.",
   "manifest_version": 3,
   "permissions": [
     "storage",
