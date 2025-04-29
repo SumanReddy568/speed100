@@ -1,3 +1,6 @@
+## [1.0.5] - 2025-04-29
+- chrome stroe review fix
+
 ## [1.0.5] - 2025-04-27
 - adding ai analysis feature
 
