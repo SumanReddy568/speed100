@@ -1,3 +1,6 @@
+## [1.0.6] - 2025-05-01
+- ui fixes and reciew banner addition
+
 ## [1.0.5] - 2025-04-29
 - re fix
 
