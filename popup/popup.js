@@ -776,6 +776,136 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Function to check if it's time to show the review prompt
+    function checkReviewPrompt() {
+        chrome.storage.local.get(['runsCount', 'reviewPromptShown'], function(data) {
+            let runsCount = data.runsCount || 0;
+            const reviewPromptShown = data.reviewPromptShown || false;
+
+            runsCount++;
+            chrome.storage.local.set({ 'runsCount': runsCount });
+
+            if (runsCount >= 2 && !reviewPromptShown) {
+                showReviewBanner();
+            }
+        });
+    }
+
+    // Function to show the review banner
+    function showReviewBanner() {
+        const banner = document.createElement('div');
+        banner.id = 'review-banner';
+        banner.style.cssText = `
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(135deg, #283593, #1a237e);
+            color: white;
+            padding: 16px 20px;
+            text-align: center;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+            font-size: 14px;
+            transition: all 0.3s ease;
+            position: relative;
+        `;
+
+        const contentWrapper = document.createElement('div');
+        contentWrapper.style.cssText = `
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            width: 100%;
+            padding-right: 40px;
+        `;
+
+        const message = document.createElement('span');
+        message.textContent = '❤️ Enjoying Speed Tester?';
+        message.style.fontWeight = '500';
+        contentWrapper.appendChild(message);
+
+        const reviewButton = document.createElement('a');
+        reviewButton.href = 'https://chromewebstore.google.com/detail/speed-tester/ikgbkmpmehkhjmhbfpoocemgkdhgjcln/reviews?hl=en&authuser=0';
+        reviewButton.textContent = 'Rate Us ★★★★★';
+        reviewButton.style.cssText = `
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-right: 16px;
+        `;
+        reviewButton.addEventListener('mouseover', () => {
+            reviewButton.style.background = 'rgba(255, 255, 255, 0.3)';
+        });
+        reviewButton.addEventListener('mouseout', () => {
+            reviewButton.style.background = 'rgba(255, 255, 255, 0.2)';
+        });
+        reviewButton.target = '_blank';
+        contentWrapper.appendChild(reviewButton);
+        banner.appendChild(contentWrapper);
+
+        const closeButton = document.createElement('div');
+        closeButton.innerHTML = '✕';
+        closeButton.style.cssText = `
+            position: absolute;
+            top: 50%;
+            right: 30px;
+            transform: translateY(-50%);
+            width: 24px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 3;
+            line-height: 1;
+            padding-bottom: 2px;
+        `;
+
+        closeButton.addEventListener('mouseover', () => {
+            closeButton.style.background = 'rgba(255, 255, 255, 0.25)';
+            closeButton.style.transform = 'translateY(-50%) scale(1.1)';
+        });
+
+        closeButton.addEventListener('mouseout', () => {
+            closeButton.style.background = 'rgba(255, 255, 255, 0.15)';
+            closeButton.style.transform = 'translateY(-50%) scale(1)';
+        });
+
+        closeButton.onclick = function() {
+            banner.style.opacity = '0';
+            banner.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                banner.remove();
+            }, 300);
+            chrome.storage.local.set({ 'reviewPromptShown': true });
+        };
+        banner.appendChild(closeButton);
+
+        document.body.appendChild(banner);
+        // Trigger animation
+        setTimeout(() => {
+            banner.style.transform = 'translateY(0)';
+            banner.style.opacity = '1';
+        }, 100);
+    }
+
     // Initialize
     function initialize() {
         initializeNetworkInfo();
@@ -799,6 +929,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateLoadHistory();
             }
         });
+
+        // Check review prompt
+        checkReviewPrompt();
     }
 
     // Initialize network info collapsed state

@@ -131,6 +131,9 @@ body {
     border: 1px solid #333;
     width: 100%;
     box-sizing: border-box;
+    position: relative;
+    z-index: 0;
+    overflow: hidden;
 }
 
 .network-info h3,
@@ -138,7 +141,8 @@ body {
     margin: 0;
     padding: 0;
     font-size: 16px;
-    color: #a0a0a0;
+    color: #e0e0e0;  /* Brighter color to match history sections */
+    font-weight: 500;
 }
 
 .info-section {
@@ -150,8 +154,9 @@ body {
 
 .info-section h4 {
     margin: 0 0 12px 0;
-    color: #888;
+    color: #e0e0e0;  /* Brighter color */
     font-size: 14px;
+    font-weight: 500;
 }
 
 .info-header {
@@ -175,15 +180,22 @@ body {
 .network-info .info-content {
     height: auto;
     overflow: hidden;
-    transition: max-height 0.3s ease, margin-top 0.3s ease;
+    transition: all 0.3s ease;
     max-height: 1000px;
     margin-top: 15px;
+    padding: 10px;
+    color: #ffffff;  /* Pure white to match history sections */
+    position: relative;
+    z-index: 1;
 }
 
 .network-info.collapsed .info-content {
     max-height: 0;
     margin-top: 0;
-    overflow: hidden;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .network-info .info-header:hover .expand-icon {
@@ -762,11 +774,12 @@ svg line {
 }
 
 .ai-recommendation h5 {
-    color: #4285f4;
+    color: #ffffff;  /* Pure white for maximum visibility */
     margin: 0 0 8px 0;
     display: flex;
     align-items: center;
     gap: 5px;
+    font-weight: 500;
 }
 
 .ai-insights .info-content {
@@ -776,6 +789,7 @@ svg line {
     max-height: 1000px;
     margin-top: 15px;
     padding: 10px;
+    color: #ffffff;  /* Pure white to match history sections */
 }
 
 .ai-insights.collapsed .info-content {
@@ -783,6 +797,14 @@ svg line {
     margin-top: 0;
     padding: 0;
     overflow: hidden;
+}
+
+.ai-recommendation h5 {
+    color: #64b5f6; /* Lighter blue for better visibility */
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .ai-insights .info-header h3::before {

@@ -2,6 +2,7 @@ class NetworkAIAnalysis {
     constructor() {
         this.historicalData = [];
         this.patterns = {};
+        this.anomalies = []; // Store detected anomalies
     }
 
     analyzeSpeedTest(result) {
@@ -9,9 +10,11 @@ class NetworkAIAnalysis {
             performance: this.analyzePerformance(result),
             recommendations: this.generateRecommendations(result),
             prediction: this.predictNextTest(result),
-            historicalInsights: this.analyzeHistoricalData()
+            historicalInsights: this.analyzeHistoricalData(),
+            anomalies: this.detectAnomalies(result) // Detect anomalies in the current test
         };
         
+        this.updateHistoricalData(result); // Update historical data
         this.updatePatterns(result);
         return analysis;
     }
@@ -98,7 +101,7 @@ class NetworkAIAnalysis {
         return strengths;
     }
 
-    // Add new method for historical analysis
+    // Enhanced historical data analysis with seasonality
     analyzeHistoricalData() {
         const insights = {
             trends: [],
@@ -108,7 +111,8 @@ class NetworkAIAnalysis {
             },
             peakHours: [],
             consistency: 'stable',
-            timeOfDayPatterns: {} // New: Patterns by time of day
+            timeOfDayPatterns: {},
+            seasonalPatterns: {} // New: Seasonal patterns
         };
 
         if (this.historicalData.length === 0) {
@@ -173,6 +177,25 @@ class NetworkAIAnalysis {
             }
         }
 
+        // Analyze seasonal patterns (e.g., day of week)
+        const dayOfWeekGroups = {};
+        this.historicalData.forEach(data => {
+            const day = new Date(data.timestamp).getDay(); // 0 (Sunday) - 6 (Saturday)
+            if (!dayOfWeekGroups[day]) {
+                dayOfWeekGroups[day] = [];
+            }
+            dayOfWeekGroups[day].push(data);
+        });
+
+        for (let day = 0; day < 7; day++) {
+            if (dayOfWeekGroups[day]) {
+                insights.seasonalPatterns[day] = {
+                    avgDownload: this.calculateAverage(dayOfWeekGroups[day], 'downloadSpeed') / 1000000,
+                    avgUpload: this.calculateAverage(dayOfWeekGroups[day], 'uploadSpeed') / 1000000
+                };
+            }
+        }
+
         return insights;
     }
 
@@ -187,10 +210,50 @@ class NetworkAIAnalysis {
         };
     }
 
+    // Anomaly detection
+    detectAnomalies(result) {
+        const anomalies = [];
+        const downloadMbps = result.downloadSpeed / 1000000;
+        const uploadMbps = result.uploadSpeed / 1000000;
+
+        // Compare against historical averages
+        const dailyAverage = this.analyzeHistoricalData()?.averages?.daily;
+
+        if (dailyAverage) {
+            const downloadDiff = downloadMbps - dailyAverage.download;
+            const uploadDiff = uploadMbps - dailyAverage.upload;
+
+            const downloadThreshold = dailyAverage.download * 0.5; // 50% deviation
+            const uploadThreshold = dailyAverage.upload * 0.5; // 50% deviation
+
+            if (Math.abs(downloadDiff) > downloadThreshold) {
+                anomalies.push({
+                    type: 'download_speed_anomaly',
+                    message: `Unusual download speed detected (deviation: ${downloadDiff.toFixed(2)} Mbps)`,
+                    severity: 'high',
+                    deviation: downloadDiff
+                });
+            }
+
+            if (Math.abs(uploadDiff) > uploadThreshold) {
+                anomalies.push({
+                    type: 'upload_speed_anomaly',
+                    message: `Unusual upload speed detected (deviation: ${uploadDiff.toFixed(2)} Mbps)`,
+                    severity: 'high',
+                    deviation: uploadDiff
+                });
+            }
+        }
+
+        this.anomalies.push(...anomalies); // Store detected anomalies
+        return anomalies;
+    }
+
     generateRecommendations(result) {
         const recommendations = [];
         const issues = this.identifyIssues(result);
         const insights = this.analyzeHistoricalData();
+        const anomalies = this.detectAnomalies(result);
 
         // Add basic recommendations based on issues
         issues.forEach(issue => {
@@ -288,11 +351,64 @@ class NetworkAIAnalysis {
             }
         }
 
+        // Add recommendations based on seasonal patterns
+        if (insights && insights.seasonalPatterns) {
+            let bestDay = null;
+            let bestSpeed = 0;
+
+            for (const day in insights.seasonalPatterns) {
+                if (insights.seasonalPatterns[day].avgDownload > bestSpeed) {
+                    bestSpeed = insights.seasonalPatterns[day].avgDownload;
+                    bestDay = day;
+                }
+            }
+
+            if (bestDay) {
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                recommendations.push({
+                    title: 'Optimize Day of Week',
+                    steps: [
+                        `Speeds are typically best on ${dayNames[bestDay]}`,
+                        'Schedule important tasks on optimal days',
+                        'Avoid days with known congestion'
+                    ],
+                    priority: 'low'
+                });
+            }
+        }
+
+        // Add recommendations based on detected anomalies
+        anomalies.forEach(anomaly => {
+            switch (anomaly.type) {
+                case 'download_speed_anomaly':
+                    recommendations.push({
+                        title: 'Investigate Download Speed Anomaly',
+                        steps: [
+                            `A significant deviation in download speed was detected (${anomaly.deviation.toFixed(2)} Mbps)`,
+                            'Check for network congestion or interference',
+                            'Restart your modem and router'
+                        ],
+                        priority: 'high'
+                    });
+                    break;
+                case 'upload_speed_anomaly':
+                    recommendations.push({
+                        title: 'Investigate Upload Speed Anomaly',
+                        steps: [
+                            `A significant deviation in upload speed was detected (${anomaly.deviation.toFixed(2)} Mbps)`,
+                            'Check for applications consuming upload bandwidth',
+                            'Ensure your device is not infected with malware'
+                        ],
+                        priority: 'high'
+                    });
+                    break;
+            }
+        });
+
         return recommendations;
     }
 
     predictNextTest(result) {
-        // Simple prediction based on time of day and historical patterns
         const hour = new Date().getHours();
         this.historicalData.push({
             ...result,
@@ -349,6 +465,21 @@ class NetworkAIAnalysis {
         if (this.patterns[key].uploadSpeeds.length > 10) {
             this.patterns[key].uploadSpeeds.shift();
         }
+    }
+
+    // Method to update historical data
+    updateHistoricalData(result) {
+        const hour = new Date().getHours();
+        this.historicalData.push({
+            ...result,
+            hour,
+            timestamp: Date.now()
+        });
+
+        // Keep only the last 7 days of data
+        this.historicalData = this.historicalData.filter(d =>
+            Date.now() - d.timestamp < 7 * 24 * 60 * 60 * 1000
+        );
     }
 }
 
