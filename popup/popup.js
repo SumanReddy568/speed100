@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Speedometer configuration
     const config = {
         downloadMaxSpeed: 300, // 300 Mbps max
-        uploadMaxSpeed: 100,   // 100 Mbps max
+        uploadMaxSpeed: 300,   // 100 Mbps max
         minRotation: -90,     // Starting position
         maxRotation: 90,      // Maximum position
         refreshInterval: 30000, // 30 seconds refresh interval

@@ -7,6 +7,24 @@ body {
     color: #e0e0e0;
 }
 
+/* Base text styling for consistency */
+h3, h4, h5, p, span, div, label, button {
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+h4 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
 .container {
     display: flex;
     flex-direction: column;
@@ -60,7 +78,7 @@ body {
     margin: 0 0 5px 0;
     text-align: center;
     font-size: 14px;
-    color: #a0a0a0;
+    color: #e0e0e0;
     font-weight: 600;
 }
 
@@ -70,7 +88,7 @@ body {
     color: #777;
     margin-top: 15px;
     padding-top: 10px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid #333;
 }
 
 .speedometer-container {
@@ -112,7 +130,7 @@ body {
 #upload-speed-display {
     font-size: 22px;
     font-weight: bold;
-    color: #fff;
+    color: #ddd;
     text-shadow: 0 0 3px rgba(255, 255, 255, 0.2);
 }
 
@@ -141,7 +159,7 @@ body {
     margin: 0;
     padding: 0;
     font-size: 16px;
-    color: #e0e0e0;  /* Brighter color to match history sections */
+    color: #e0e0e0;
     font-weight: 500;
 }
 
@@ -154,7 +172,7 @@ body {
 
 .info-section h4 {
     margin: 0 0 12px 0;
-    color: #e0e0e0;  /* Brighter color */
+    color: #e0e0e0;
     font-size: 14px;
     font-weight: 500;
 }
@@ -170,11 +188,11 @@ body {
 .network-info .expand-icon {
     transition: transform 0.3s ease;
     color: #666;
-    transform: rotate(0deg);  /* Starting position points down */
+    transform: rotate(0deg);
 }
 
 .network-info.collapsed .expand-icon {
-    transform: rotate(-180deg);  /* Rotates to point up when collapsed */
+    transform: rotate(-180deg);
 }
 
 .network-info .info-content {
@@ -184,7 +202,7 @@ body {
     max-height: 1000px;
     margin-top: 15px;
     padding: 10px;
-    color: #ffffff;  /* Pure white to match history sections */
+    color: #ddd;
     position: relative;
     z-index: 1;
 }
@@ -309,6 +327,14 @@ svg line {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
+.modal-content h3 {
+    color: #e0e0e0;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
 .close {
     color: #aaa;
     float: right;
@@ -357,6 +383,14 @@ svg line {
     box-sizing: border-box;
 }
 
+.speed-history-graph h3 {
+    color: #e0e0e0;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
 .history-header {
     display: flex;
     justify-content: space-between;
@@ -368,11 +402,11 @@ svg line {
 .speed-history-graph .expand-icon {
     transition: transform 0.3s ease;
     color: #666;
-    transform: rotate(0deg);  /* Starting position points down */
+    transform: rotate(0deg);
 }
 
 .speed-history-graph.collapsed .expand-icon {
-    transform: rotate(-180deg);  /* Rotates to point up when collapsed */
+    transform: rotate(-180deg);
 }
 
 .speed-history-graph .history-header:hover .expand-icon {
@@ -385,6 +419,7 @@ svg line {
     transition: max-height 0.3s ease, margin-top 0.3s ease;
     max-height: 1000px;
     margin-top: 15px;
+    color: #ddd;
 }
 
 .speed-history-graph.collapsed .graph-content {
@@ -431,7 +466,7 @@ svg line {
     justify-content: center;
     gap: 30px;
     font-size: 12px;
-    color: #888;
+    color: #ddd;
     margin-bottom: 15px;
     padding: 8px;
     background: rgba(255, 255, 255, 0.05);
@@ -448,6 +483,7 @@ svg line {
     padding: 4px 12px;
     border-radius: 15px;
     font-weight: 500;
+    color: #ddd;
 }
 
 .graph-labels span:first-child {
@@ -534,7 +570,7 @@ svg line {
     justify-content: center;
     gap: 20px;
     font-size: 11px;
-    color: #888;
+    color: #ddd;
     margin-bottom: 8px;
 }
 
@@ -571,7 +607,7 @@ svg line {
 
 .load-test-container h3 {
     margin: 0 0 10px 0;
-    color: #a0a0a0;
+    color: #e0e0e0;
     font-size: 16px;
 }
 
@@ -659,14 +695,22 @@ svg line {
     box-sizing: border-box;
 }
 
+.load-history-graph h3 {
+    color: #e0e0e0;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 500;
+}
+
 .load-history-graph .expand-icon {
     transition: transform 0.3s ease;
     color: #666;
-    transform: rotate(0deg);  /* Starting position points down */
+    transform: rotate(0deg);
 }
 
 .load-history-graph.collapsed .expand-icon {
-    transform: rotate(-180deg);  /* Rotates to point up when collapsed */
+    transform: rotate(-180deg);
 }
 
 .load-history-content {
@@ -675,6 +719,7 @@ svg line {
     transition: max-height 0.3s ease, margin-top 0.3s ease;
     max-height: 1000px;
     margin-top: 15px;
+    color: #ddd;
 }
 
 .load-history-graph.collapsed .load-history-content {
@@ -740,8 +785,9 @@ svg line {
     padding: 20px;
 }
 
-.no-data-message {
-    text-align: center;
+.empty-state .no-data-message {
+    color: #888;
+    font-style: italic;
 }
 
 .ai-insights {
@@ -751,6 +797,14 @@ svg line {
     margin: 10px 0;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     border: 1px solid #333;
+}
+
+.ai-insights h3 {
+    color: #e0e0e0;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .ai-performance-rating {
@@ -774,12 +828,16 @@ svg line {
 }
 
 .ai-recommendation h5 {
-    color: #ffffff;  /* Pure white for maximum visibility */
+    color: #e0e0e0;
     margin: 0 0 8px 0;
     display: flex;
     align-items: center;
     gap: 5px;
     font-weight: 500;
+}
+
+.ai-recommendation p {
+    color: #ddd;
 }
 
 .ai-insights .info-content {
@@ -789,7 +847,7 @@ svg line {
     max-height: 1000px;
     margin-top: 15px;
     padding: 10px;
-    color: #ffffff;  /* Pure white to match history sections */
+    color: #ddd;
 }
 
 .ai-insights.collapsed .info-content {
@@ -799,12 +857,10 @@ svg line {
     overflow: hidden;
 }
 
-.ai-recommendation h5 {
-    color: #64b5f6; /* Lighter blue for better visibility */
-    margin: 0 0 8px 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+.ai-insights #ai-performance,
+.ai-insights #ai-recommendations,
+.ai-insights #ai-predictions {
+    color: #ddd !important;
 }
 
 .ai-insights .info-header h3::before {
