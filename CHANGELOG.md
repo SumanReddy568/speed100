@@ -1,3 +1,6 @@
+## [1.0.8] - 2025-10-28
+- new ext ui changes for promotional banner
+
 ## [1.0.7] - 2025-05-11
 - minor ui fixes
 
