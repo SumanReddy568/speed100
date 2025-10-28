@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const timeLabels = document.querySelector('.graph-time-labels');
         const emptyState = document.getElementById('speed-history-empty-state');
         const graphContent = document.querySelector('.graph-content-data');
-        
+
         if (!speedTestHistory || speedTestHistory.length === 0) {
             if (emptyState) emptyState.style.display = 'flex';
             if (graphContent) graphContent.style.display = 'none';
@@ -142,13 +142,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (emptyState) emptyState.style.display = 'none';
         if (graphContent) graphContent.style.display = 'block';
-        
+
         if (!canvas || !container || !speedTestHistory || speedTestHistory.length === 0) return;
-        
+
         // Clear existing content
         timeLabels.innerHTML = '';
         const ctx = canvas.getContext('2d');
-        
+
         // Set canvas size
         const dpr = window.devicePixelRatio || 1;
         const rect = container.getBoundingClientRect();
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.style.width = `${rect.width}px`;
         canvas.style.height = `${rect.height}px`;
         ctx.scale(dpr, dpr);
-        
+
         // Clear previous content
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Find max speed for scaling
         const maxSpeed = Math.max(
-            ...recentTests.map(test => 
+            ...recentTests.map(test =>
                 Math.max((test.downloadSpeed || 0) / 1000000, (test.uploadSpeed || 0) / 1000000)
             ),
             1 // Minimum scale
@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.fillStyle = '#fff';
             ctx.font = '10px Arial';
             ctx.textAlign = 'center';
-            
+
             // Download speed label
             ctx.fillText(
                 `${(test.downloadSpeed / 1000000).toFixed(1)}`,
@@ -236,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.moveTo(padding.left, y);
             ctx.lineTo(rect.width - padding.right, y);
             ctx.stroke();
-            
+
             // Add speed scale
             ctx.fillStyle = '#666';
             ctx.textAlign = 'right';
@@ -250,9 +250,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateLoadHistory() {
         if (!elements.loadHistoryList) return;
-        
+
         elements.loadHistoryList.innerHTML = '';
-        
+
         if (!loadTestHistory || loadTestHistory.length === 0) {
             const emptyState = document.createElement('div');
             emptyState.className = 'empty-state';
@@ -260,11 +260,11 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.loadHistoryList.appendChild(emptyState);
             return;
         }
-        
+
         loadTestHistory.slice(0, 3).forEach(test => {
             const item = document.createElement('div');
             item.className = 'load-history-item';
-            
+
             const date = new Date(test.timestamp);
             item.innerHTML = `
                 <span class="info-label">File Size:</span>
@@ -275,14 +275,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 <span class="info-value">${test.totalTime.toFixed(1)}s</span>
                 <div class="load-history-time">${date.toLocaleString()}</div>
             `;
-            
+
             elements.loadHistoryList.appendChild(item);
         });
     }
 
     // Initialize graph collapsed state from storage
     function initializeGraphState() {
-        chrome.storage.local.get(['historyCollapsed'], function(result) {
+        chrome.storage.local.get(['historyCollapsed'], function (result) {
             const graph = document.querySelector('.speed-history-graph');
             if (result.historyCollapsed) {
                 graph.classList.add('collapsed');
@@ -379,19 +379,19 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update the click handlers for collapsible sections
     function initializeCollapsibleSections() {
         const sections = [
-            { 
+            {
                 id: 'speed-history-header',
                 element: document.querySelector('.speed-history-graph'),
                 storageKey: 'speedHistoryCollapsed',
                 updateFn: updateHistoryGraph
             },
-            { 
+            {
                 id: 'load-history-header',
                 element: document.querySelector('.load-history-graph'),
                 storageKey: 'loadHistoryCollapsed',
                 updateFn: updateLoadHistory
             },
-            { 
+            {
                 id: 'network-info-header',
                 element: document.querySelector('.network-info'),
                 storageKey: 'networkInfoCollapsed'
@@ -401,6 +401,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 element: document.querySelector('.ai-insights'),
                 storageKey: 'aiInsightsCollapsed',
                 updateFn: updateAIInsightsContent
+            },
+            {
+                id: 'additional-tools-header',
+                element: document.querySelector('.additional-tools'),
+                storageKey: 'additionalToolsCollapsed'
             }
         ];
 
@@ -409,11 +414,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (header && section.element) {
                 header.addEventListener('click', () => {
                     section.element.classList.toggle('collapsed');
-                    
+
                     if (!section.element.classList.contains('collapsed') && section.updateFn) {
                         setTimeout(section.updateFn, 300);
                     }
-                    
+
                     chrome.storage.local.set({
                         [section.storageKey]: section.element.classList.contains('collapsed')
                     });
@@ -422,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Initialize collapsed states
-        chrome.storage.local.get(sections.map(s => s.storageKey), function(result) {
+        chrome.storage.local.get(sections.map(s => s.storageKey), function (result) {
             sections.forEach(section => {
                 if (section.element && result[section.storageKey]) {
                     section.element.classList.add('collapsed');
@@ -642,11 +647,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     uploadSpeed: request.uploadSpeed,
                     timestamp: Date.now()
                 };
-                
+
                 speedTestHistory.unshift(newTest);
                 speedTestHistory = speedTestHistory.slice(0, 3);
                 updateHistoryGraph();
-                
+
                 // Save to storage
                 chrome.storage.local.set({ speedTestHistory: speedTestHistory });
             }
@@ -714,10 +719,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     elements.startLoadTest.addEventListener('click', async () => {
         if (isLoadTestRunning) return;
-        
+
         const fileSizeMB = parseInt(elements.loadSizeSelect.value, 10);
         const speedTest = new window.SpeedTest();
-        
+
         // Update UI for test start
         isLoadTestRunning = true;
         elements.startLoadTest.disabled = true;
@@ -725,12 +730,12 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.runTestBtn.disabled = true;
         elements.runLoadTestBtn.disabled = true;
         document.body.classList.add('test-running');
-        
+
         try {
             const result = await speedTest.runLoadTest(fileSizeMB, (progress) => {
                 elements.progressFill.style.width = `${progress.progress * 100}%`;
                 updateSpeedometer('download', progress.speedMbps);
-                elements.loadTestStatus.textContent = 
+                elements.loadTestStatus.textContent =
                     `Speed: ${progress.speedMbps.toFixed(2)} Mbps | ` +
                     `${(progress.bytesReceived / 1024 / 1024).toFixed(0)}MB of ${fileSizeMB}MB | ` +
                     `Time: ${progress.elapsedSeconds.toFixed(1)}s`;
@@ -744,16 +749,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     averageSpeedMbps: result.averageSpeedMbps,
                     totalTime: result.totalTime
                 };
-                
+
                 loadTestHistory.unshift(historyEntry);
                 loadTestHistory = loadTestHistory.slice(0, 3); // Keep only last 3 tests
-                
+
                 // Save to storage
                 chrome.storage.local.set({ loadTestHistory });
-                
+
                 // Update UI
                 updateLoadHistory();
-                elements.loadTestStatus.textContent = 
+                elements.loadTestStatus.textContent =
                     `Complete! Average Speed: ${result.averageSpeedMbps.toFixed(2)} Mbps | ` +
                     `Total Time: ${result.totalTime.toFixed(1)}s`;
             } else {
@@ -769,7 +774,7 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.runTestBtn.disabled = false;
             elements.runLoadTestBtn.disabled = false;
             document.body.classList.remove('test-running');
-            
+
             setTimeout(() => {
                 updateSpeedometer('download', 0);
             }, 2000);
@@ -778,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to check if it's time to show the review prompt
     function checkReviewPrompt() {
-        chrome.storage.local.get(['runsCount', 'reviewPromptShown'], function(data) {
+        chrome.storage.local.get(['runsCount', 'reviewPromptShown'], function (data) {
             let runsCount = data.runsCount || 0;
             const reviewPromptShown = data.reviewPromptShown || false;
 
@@ -888,7 +893,7 @@ document.addEventListener('DOMContentLoaded', function () {
             closeButton.style.transform = 'translateY(-50%) scale(1)';
         });
 
-        closeButton.onclick = function() {
+        closeButton.onclick = function () {
             banner.style.opacity = '0';
             banner.style.transform = 'translateY(100%)';
             setTimeout(() => {
@@ -906,6 +911,120 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 100);
     }
 
+    // Promotional Banner Management
+    const promoBanner = document.getElementById('promotional-banner');
+    const promoClose = document.getElementById('promo-close');
+    const rateUsLink = document.querySelector('.promo-link.rate');
+    const aiAgentsLink = document.querySelector('.promo-link.ai');
+
+    // Check promotional banner status
+    function checkPromoBannerStatus() {
+        const rateUsClicked = localStorage.getItem('promoRateUsClicked') === 'true';
+        const aiAgentsClicked = localStorage.getItem('promoAiAgentsClicked') === 'true';
+        const bannerClosed = localStorage.getItem('promoBannerClosed') === 'true';
+
+        // Update visual state of links
+        if (rateUsClicked && rateUsLink) {
+            rateUsLink.classList.add('clicked');
+        }
+        if (aiAgentsClicked && aiAgentsLink) {
+            aiAgentsLink.classList.add('clicked');
+        }
+
+        // Only hide permanently if both links were clicked
+        // Ignore manual close - always show banner unless both links clicked
+        if (rateUsClicked && aiAgentsClicked) {
+            promoBanner.classList.add('hidden');
+        } else {
+            promoBanner.classList.remove('hidden');
+            // Clear the manual close flag so banner shows again
+            localStorage.removeItem('promoBannerClosed');
+        }
+
+        // Update banner message if one link is clicked
+        const bannerTitle = promoBanner.querySelector('h4');
+        if (bannerTitle) {
+            if (rateUsClicked && !aiAgentsClicked) {
+                bannerTitle.textContent = '🤖 Check out our AI agents too!';
+            } else if (aiAgentsClicked && !rateUsClicked) {
+                bannerTitle.textContent = '⭐ Don\'t forget to rate us!';
+            } else if (!rateUsClicked && !aiAgentsClicked) {
+                bannerTitle.textContent = '✨ Help us improve & discover more!';
+            }
+        }
+    }
+
+    // Initialize banner status
+    checkPromoBannerStatus();
+
+    // Handle rate us link click
+    if (rateUsLink) {
+        rateUsLink.addEventListener('click', function (e) {
+            localStorage.setItem('promoRateUsClicked', 'true');
+            rateUsLink.classList.add('clicked');
+
+            // Update banner message
+            const aiAgentsClicked = localStorage.getItem('promoAiAgentsClicked') === 'true';
+            const bannerTitle = promoBanner.querySelector('h4');
+
+            if (!aiAgentsClicked) {
+                bannerTitle.textContent = '🤖 Check out our AI agents too!';
+            } else {
+                // Both clicked - hide banner
+                setTimeout(() => {
+                    promoBanner.style.opacity = '0';
+                    promoBanner.style.transform = 'translateY(-10px)';
+                    setTimeout(() => {
+                        promoBanner.classList.add('hidden');
+                    }, 300);
+                }, 1000);
+            }
+        });
+    }
+
+    // Handle AI agents link click
+    if (aiAgentsLink) {
+        aiAgentsLink.addEventListener('click', function (e) {
+            localStorage.setItem('promoAiAgentsClicked', 'true');
+            aiAgentsLink.classList.add('clicked');
+
+            // Update banner message
+            const rateUsClicked = localStorage.getItem('promoRateUsClicked') === 'true';
+            const bannerTitle = promoBanner.querySelector('h4');
+
+            if (!rateUsClicked) {
+                bannerTitle.textContent = '⭐ Don\'t forget to rate us!';
+            } else {
+                // Both clicked - hide banner
+                setTimeout(() => {
+                    promoBanner.style.opacity = '0';
+                    promoBanner.style.transform = 'translateY(-10px)';
+                    setTimeout(() => {
+                        promoBanner.classList.add('hidden');
+                    }, 300);
+                }, 1000);
+            }
+        });
+    }
+
+    // Handle close button click (manual close)
+    if (promoClose) {
+        promoClose.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Hide banner with animation (temporarily)
+            promoBanner.style.opacity = '0';
+            promoBanner.style.transform = 'translateY(-10px)';
+
+            setTimeout(() => {
+                promoBanner.classList.add('hidden');
+                // Store temporary close preference (will be cleared on next popup open)
+                localStorage.setItem('promoBannerClosed', 'true');
+            }, 300);
+        });
+    }
+
     // Initialize
     function initialize() {
         initializeNetworkInfo();
@@ -919,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initializeNetworkInfoState();
 
         // Load test histories
-        chrome.storage.local.get(['speedTestHistory', 'loadTestHistory'], function(result) {
+        chrome.storage.local.get(['speedTestHistory', 'loadTestHistory'], function (result) {
             if (result.speedTestHistory) {
                 speedTestHistory = result.speedTestHistory;
                 updateHistoryGraph();
@@ -936,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize network info collapsed state
     function initializeNetworkInfoState() {
-        chrome.storage.local.get(['networkInfoCollapsed'], function(result) {
+        chrome.storage.local.get(['networkInfoCollapsed'], function (result) {
             const networkInfo = document.querySelector('.network-info');
             if (result.networkInfoCollapsed) {
                 networkInfo.classList.add('collapsed');

@@ -64,14 +64,16 @@ h4 {
 .speedometers-container {
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    gap: 20px;
+    margin-bottom: 10px;
 }
 
 .speedometer-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 50%;
+    width: 48%;
+    flex-shrink: 0;
 }
 
 .meter-title {
@@ -91,6 +93,125 @@ h4 {
     border-top: 1px solid #333;
 }
 
+/* Promotional Banner Styles */
+.promotional-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 15px 0 5px 0;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.promotional-banner.hidden {
+    display: none;
+}
+
+.promo-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+    z-index: 10;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.promo-close:hover {
+    color: #fff;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.promo-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.promo-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.promo-link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    color: #fff;
+    text-decoration: none;
+}
+
+.promo-link i {
+    font-size: 14px;
+}
+
+.promo-link.rate {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: rgba(255, 193, 7, 0.3);
+}
+
+.promo-link.rate:hover {
+    background: rgba(255, 193, 7, 0.3);
+}
+
+.promo-link.ai {
+    background: rgba(76, 175, 80, 0.2);
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.promo-link.ai:hover {
+    background: rgba(76, 175, 80, 0.3);
+}
+
+.promo-link.web-tests {
+    background: rgba(33, 150, 243, 0.2);
+    border-color: rgba(33, 150, 243, 0.3);
+}
+
+.promo-link.web-tests:hover {
+    background: rgba(33, 150, 243, 0.3);
+}
+
+.promo-link.clicked {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0.7;
+    position: relative;
+}
+
+.promo-link.clicked::after {
+    content: '✓';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #4caf50;
+    font-weight: bold;
+}
+
 .speedometer-container {
     position: relative;
     width: 100%;
@@ -100,9 +221,10 @@ h4 {
     align-items: center;
     background-color: #2a2a2a;
     border-radius: 12px;
-    padding: 10px;
+    padding: 8px;
     box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.3), 0 0 8px rgba(0, 0, 0, 0.2);
     overflow: hidden;
+    margin: 0 auto;
 }
 
 #download-speedometer,
@@ -364,6 +486,38 @@ svg line {
     background-color: #333;
     color: #fff;
     border: 1px solid #444;
+}
+
+.tools-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.tool-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(66, 133, 244, 0.1);
+    color: #4285f4;
+    text-decoration: none;
+    border-radius: 8px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(66, 133, 244, 0.2);
+}
+
+.tool-link:hover {
+    background: rgba(66, 133, 244, 0.2);
+    transform: translateY(-1px);
+    color: #4285f4;
+    text-decoration: none;
+}
+
+.tool-link i {
+    font-size: 14px;
 }
 
 #save-settings {
@@ -877,4 +1031,137 @@ svg line {
     transition: transform 0.3s ease;
     color: #666;
     margin-left: auto;
+}
+
+.additional-tools {
+    background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+    border-radius: 12px;
+    padding: 15px;
+    margin: 10px 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.additional-tools::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, #4285f4, #34a853, #ea4335, #fbbc05);
+    background-size: 400% 400%;
+    animation: gradientShift 3s ease infinite;
+    border-radius: 12px;
+    z-index: -1;
+    padding: 2px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.additional-tools h3 {
+    color: #e0e0e0;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.additional-tools h3::before {
+    content: '⚡';
+    font-size: 18px;
+    color: #4285f4;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.additional-tools .expand-icon {
+    transition: transform 0.3s ease;
+    color: #4285f4;
+    transform: rotate(0deg);
+    font-weight: bold;
+}
+
+.additional-tools.collapsed .expand-icon {
+    transform: rotate(-180deg);
+}
+
+.additional-tools .info-content {
+    height: auto;
+    overflow: hidden;
+    transition: max-height 0.3s ease, margin-top 0.3s ease;
+    max-height: 1000px;
+    margin-top: 15px;
+    padding: 10px;
+    color: #ddd;
+    position: relative;
+}
+
+.additional-tools .info-content::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #4285f4, transparent);
+}
+
+.additional-tools.collapsed .info-content {
+    max-height: 0;
+    margin-top: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.additional-tools .info-header:hover .expand-icon {
+    color: #34a853;
+    transform: scale(1.1);
+}
+
+.additional-tools .tool-link {
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.15), rgba(52, 168, 83, 0.15));
+    border: 1px solid rgba(66, 133, 244, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.additional-tools .tool-link::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    transition: left 0.5s ease;
+}
+
+.additional-tools .tool-link:hover::before {
+    left: 100%;
+}
+
+.additional-tools .tool-link:hover {
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.25), rgba(52, 168, 83, 0.25));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
 }
