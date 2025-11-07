@@ -1165,3 +1165,46 @@ svg line {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
 }
+
+.api-banner {
+    background: linear-gradient(135deg, #1a237e, #0d47a1);
+    padding: 8px 16px;
+    margin: 8px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.api-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.api-text {
+    color: #fff;
+    font-weight: 500;
+}
+
+.api-link {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    text-decoration: none;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.api-link:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+.api-link i {
+    font-size: 12px;
+}
