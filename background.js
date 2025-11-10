@@ -88,7 +88,17 @@ async function runSpeedTest() {
         updateBadge(speedTest.downloadSpeed / 1000000);
 
         // Add AI analysis
-        const analysis = aiAnalysis.analyzeSpeedTest(lastTestResult);
+        sendProgress('Generating AI insights...', {
+            downloadSpeed: speedTest.downloadSpeed,
+            uploadSpeed: speedTest.uploadSpeed
+        });
+
+        let analysis = null;
+        try {
+            analysis = await aiAnalysis.analyzeSpeedTest(lastTestResult);
+        } catch (error) {
+            console.error('AI analysis failed:', error);
+        }
         lastTestResult.aiAnalysis = analysis;
 
         // Send final update with network info and AI analysis

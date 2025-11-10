@@ -398,6 +398,7 @@ class SpeedTest {
 SpeedTest.prototype.getNetworkInfo = async function () {
     const networkInfo = {
         ipAddress: '-',
+        localAddress: '-',
         dns: '-',
         signalStrength: '-',
         connectionType: '-',
@@ -418,44 +419,57 @@ SpeedTest.prototype.getNetworkInfo = async function () {
     };
 
     try {
-        if (navigator.connection) {
-            networkInfo.connectionType = navigator.connection.effectiveType || 'Unknown';
-            networkInfo.networkName = navigator.connection.type || 'Unknown';
+        const hasNetworkInformationApi =
+            typeof navigator !== 'undefined' &&
+            navigator.connection &&
+            typeof navigator.connection === 'object';
 
-            if (navigator.connection.downlink !== undefined) {
-                networkInfo.signalStrength = `${navigator.connection.downlink} Mbps`;
+        if (hasNetworkInformationApi) {
+            const connection = navigator.connection;
+            networkInfo.connectionType = connection.effectiveType || connection.type || 'Unknown';
+            networkInfo.networkName = connection.type || connection.effectiveType || 'Unknown';
+
+            if (connection.downlink !== undefined) {
+                networkInfo.signalStrength = `${connection.downlink} Mbps`;
             }
 
-            if (navigator.connection.rtt) {
-                networkInfo.latency = `${navigator.connection.rtt} ms`;
+            if (connection.rtt) {
+                networkInfo.latency = `${connection.rtt} ms`;
             }
+        } else {
+            console.warn('Network Information API is not available in this context.');
         }
 
         try {
             const ipResponse = await Promise.race([
-                fetch('https://ipapi.co/json/', { mode: 'cors' }),
+                fetch('https://api.ipify.org?format=json', { mode: 'cors' }),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
             ]);
 
             if (ipResponse.ok) {
                 const data = await ipResponse.json();
                 networkInfo.ipAddress = data.ip || 'Unavailable';
-                networkInfo.location.country = data.country_name || 'Unavailable';
-                networkInfo.location.city = data.city || 'Unavailable';
-                networkInfo.location.region = data.region || 'Unavailable';
-                networkInfo.location.timezone = data.timezone || 'Unavailable';
-                networkInfo.isp = data.org || 'Unavailable';
+
+                try {
+                    const geoResponse = await fetch(`https://ipwho.is/${data.ip}`, { mode: 'cors' });
+                    if (geoResponse.ok) {
+                        const geoData = await geoResponse.json();
+                        if (geoData && geoData.success !== false) {
+                            networkInfo.location.country = geoData.country || 'Unavailable';
+                            networkInfo.location.city = geoData.city || 'Unavailable';
+                            networkInfo.location.region = geoData.region || 'Unavailable';
+                            networkInfo.location.timezone = geoData.timezone?.id || geoData.timezone || 'Unavailable';
+                            networkInfo.isp = geoData.connection?.isp || geoData.connection?.org || geoData.isp || 'Unavailable';
+                        } else {
+                            console.warn('Geo IP lookup did not return success:', geoData?.message || 'Unknown error');
+                        }
+                    }
+                } catch (geoError) {
+                    console.warn('Geo IP lookup failed:', geoError.message);
+                }
             }
         } catch (ipError) {
-            try {
-                const fallbackResponse = await fetch('https://api.ipify.org?format=json', { mode: 'cors' });
-                if (fallbackResponse.ok) {
-                    const data = await fallbackResponse.json();
-                    networkInfo.ipAddress = data.ip || 'Unavailable';
-                }
-            } catch (fallbackError) {
-                console.warn("Fallback IP detection failed:", fallbackError.message);
-            }
+            console.warn('Public IP detection failed:', ipError.message);
         }
 
         const latencyResult = await this.testLatency();
@@ -465,34 +479,49 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         }
 
         try {
-            const dnsResponse = await fetch('https://dns.google/resolve?name=' + window.location.hostname);
-            if (dnsResponse.ok) {
-                networkInfo.dns = 'Google DNS';
+            const hostname =
+                (typeof window !== 'undefined' && window.location && window.location.hostname) ||
+                (typeof self !== 'undefined' && self.location && self.location.hostname) ||
+                '';
+
+            if (hostname) {
+                const dnsResponse = await fetch('https://dns.google/resolve?name=' + hostname);
+                if (dnsResponse.ok) {
+                    networkInfo.dns = 'Google DNS';
+                }
+            } else {
+                console.warn('DNS detection skipped: hostname is unavailable in this context.');
             }
         } catch (dnsError) {
             console.warn("DNS detection failed:", dnsError.message);
         }
 
-        try {
-            const rtcPeerConnection = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-            });
+        if (typeof RTCPeerConnection !== 'undefined') {
+            try {
+                const rtcPeerConnection = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
 
-            rtcPeerConnection.createDataChannel("");
-            rtcPeerConnection.createOffer()
-                .then(offer => rtcPeerConnection.setLocalDescription(offer))
-                .catch(err => console.warn("RTC local detection failed:", err));
+                rtcPeerConnection.createDataChannel("");
+                rtcPeerConnection.createOffer()
+                    .then(offer => rtcPeerConnection.setLocalDescription(offer))
+                    .catch(err => console.warn("RTC local detection failed:", err));
 
-            rtcPeerConnection.onicecandidate = (event) => {
-                if (event.candidate) {
-                    const localIP = event.candidate.address;
-                    if (localIP) {
-                        networkInfo.localAddress = localIP;
+                rtcPeerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        const localIP = event.candidate.address || event.candidate.ip;
+                        if (localIP) {
+                            networkInfo.localAddress = localIP;
+                        }
                     }
-                }
-            };
-        } catch (rtcError) {
-            console.warn("Local network detection failed:", rtcError.message);
+                };
+
+                setTimeout(() => rtcPeerConnection.close(), 5000);
+            } catch (rtcError) {
+                console.warn("Local network detection failed:", rtcError.message);
+            }
+        } else {
+            console.warn('Local network detection skipped: RTCPeerConnection is not available.');
         }
 
         networkInfo.status = 'completed';

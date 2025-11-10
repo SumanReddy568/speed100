@@ -3,17 +3,122 @@ class NetworkAIAnalysis {
         this.historicalData = [];
         this.patterns = {};
         this.anomalies = []; // Store detected anomalies
+        this.openRouterApiKey = undefined;
+        this.openRouterTimeoutMs = 12000;
+        this.llmModel = 'openai/gpt-4o';
+        this.lastLLMError = null;
+
+        if (typeof chrome !== 'undefined' &&
+            chrome.storage &&
+            chrome.storage.onChanged &&
+            typeof chrome.storage.onChanged.addListener === 'function') {
+            chrome.storage.onChanged.addListener((changes, areaName) => {
+                if (areaName === 'local' && changes.openRouterApiKey) {
+                    this.openRouterApiKey = changes.openRouterApiKey.newValue || null;
+                }
+            });
+        }
     }
 
-    analyzeSpeedTest(result) {
+    async analyzeSpeedTest(result) {
+        const performance = this.analyzePerformance(result);
+        const prediction = this.predictNextTest(result);
+        const historicalInsights = this.analyzeHistoricalData();
+        const anomalies = this.detectAnomalies(result); // Detect anomalies in the current test
+
+        const recommendations = this.generateRecommendations(result, {
+            issues: performance.issues,
+            insights: historicalInsights,
+            anomalies
+        });
+
         const analysis = {
-            performance: this.analyzePerformance(result),
-            recommendations: this.generateRecommendations(result),
-            prediction: this.predictNextTest(result),
-            historicalInsights: this.analyzeHistoricalData(),
-            anomalies: this.detectAnomalies(result) // Detect anomalies in the current test
+            performance,
+            recommendations,
+            prediction,
+            historicalInsights,
+            anomalies,
+            meta: {
+                summarySource: 'heuristic',
+                llmUsed: false,
+                llmModel: null,
+                llmError: null,
+                generatedAt: new Date().toISOString(),
+                aiOverrides: {
+                    summary: false,
+                    recommendations: false,
+                    prediction: false,
+                    issues: false,
+                    strengths: false
+                }
+            }
         };
-        
+
+        analysis.performance.summary = this.generateHeuristicSummary(result, analysis);
+
+        const llmResult = await this.generateLLMInsights(result, analysis);
+
+        if (llmResult?.summary) {
+            analysis.performance.summary = llmResult.summary;
+            analysis.llmSummary = llmResult.summary;
+            analysis.meta.summarySource = 'openrouter';
+            analysis.meta.llmUsed = true;
+            analysis.meta.llmModel = llmResult.model || this.llmModel;
+            analysis.meta.aiOverrides.summary = true;
+        }
+
+        if (llmResult?.structured) {
+            analysis.meta.llmUsed = true;
+            analysis.meta.llmModel = llmResult.model || this.llmModel;
+            if (analysis.meta.summarySource === 'heuristic') {
+                analysis.meta.summarySource = 'hybrid';
+            }
+
+            const structured = llmResult.structured;
+
+            if (Array.isArray(structured.recommendations) && structured.recommendations.length > 0) {
+                analysis.recommendations = structured.recommendations;
+                analysis.meta.aiOverrides.recommendations = true;
+            }
+
+            if (structured.prediction) {
+                const updatedPrediction = { ...analysis.prediction };
+                if (typeof structured.prediction.downloadSpeed === 'number') {
+                    updatedPrediction.downloadSpeed = structured.prediction.downloadSpeed;
+                }
+                if (typeof structured.prediction.uploadSpeed === 'number') {
+                    updatedPrediction.uploadSpeed = structured.prediction.uploadSpeed;
+                }
+                if (structured.prediction.confidence) {
+                    updatedPrediction.confidence = structured.prediction.confidence;
+                }
+                if (structured.prediction.notes) {
+                    updatedPrediction.notes = structured.prediction.notes;
+                }
+                analysis.prediction = updatedPrediction;
+                analysis.meta.aiOverrides.prediction = true;
+            }
+
+            if (Array.isArray(structured.issues) && structured.issues.length > 0) {
+                analysis.performance.issues = structured.issues;
+                analysis.meta.aiOverrides.issues = true;
+            }
+
+            if (Array.isArray(structured.strengths) && structured.strengths.length > 0) {
+                analysis.performance.strengths = structured.strengths;
+                analysis.meta.aiOverrides.strengths = true;
+            }
+        }
+
+        if (llmResult?.error) {
+            analysis.meta.llmError = llmResult.error;
+            this.lastLLMError = llmResult.error;
+        }
+
+        if (llmResult?.reason === 'missing_api_key') {
+            analysis.meta.llmError = 'Add your OpenRouter API key in settings to enable AI summaries or check https://openrouter.ai/docs/overview/models to get started.';
+        }
+
         this.updateHistoricalData(result); // Update historical data
         this.updatePatterns(result);
         return analysis;
@@ -249,11 +354,11 @@ class NetworkAIAnalysis {
         return anomalies;
     }
 
-    generateRecommendations(result) {
+    generateRecommendations(result, context = {}) {
         const recommendations = [];
-        const issues = this.identifyIssues(result);
-        const insights = this.analyzeHistoricalData();
-        const anomalies = this.detectAnomalies(result);
+        const issues = context.issues || this.identifyIssues(result);
+        const insights = context.insights !== undefined ? context.insights : this.analyzeHistoricalData();
+        const anomalies = context.anomalies || this.detectAnomalies(result);
 
         // Add basic recommendations based on issues
         issues.forEach(issue => {
@@ -480,6 +585,536 @@ class NetworkAIAnalysis {
         this.historicalData = this.historicalData.filter(d =>
             Date.now() - d.timestamp < 7 * 24 * 60 * 60 * 1000
         );
+    }
+
+    getRatingLabel(score) {
+        const labels = ['Very Poor', 'Poor', 'Average', 'Good', 'Excellent'];
+        if (typeof score !== 'number' || Number.isNaN(score)) {
+            return 'Unknown';
+        }
+        const index = Math.min(Math.max(Math.round(score) - 1, 0), labels.length - 1);
+        return labels[index];
+    }
+
+    generateHeuristicSummary(result, analysis) {
+        const downloadMbps = (result?.downloadSpeed || 0) / 1000000;
+        const uploadMbps = (result?.uploadSpeed || 0) / 1000000;
+        const latency = result?.networkInfo?.latency;
+
+        const overallLabel = this.getRatingLabel(analysis?.performance?.rating?.overall);
+        const issues = analysis?.performance?.issues || [];
+        const strengths = analysis?.performance?.strengths || [];
+        const anomalies = analysis?.anomalies || [];
+        const recommendations = analysis?.recommendations || [];
+
+        const summaryParts = [];
+
+        if (overallLabel !== 'Unknown') {
+            summaryParts.push(`Overall network performance is ${overallLabel.toLowerCase()}.`);
+        } else {
+            summaryParts.push('Overall network performance rating is unavailable.');
+        }
+
+        summaryParts.push(`Measured download at ${downloadMbps.toFixed(1)} Mbps and upload at ${uploadMbps.toFixed(1)} Mbps.`);
+
+        if (typeof latency === 'number') {
+            summaryParts.push(`Latency is ${latency} ms.`);
+        }
+
+        if (issues.length > 0) {
+            summaryParts.push(`Top concern: ${issues[0].message}.`);
+        } else {
+            summaryParts.push('No critical issues detected.');
+        }
+
+        if (anomalies.length > 0) {
+            summaryParts.push(`Recent anomaly: ${anomalies[0].message}.`);
+        } else if (strengths.length > 0) {
+            summaryParts.push(`Notable strength: ${strengths[0].message}.`);
+        }
+
+        if (recommendations.length > 0) {
+            summaryParts.push(`Suggested next step: ${recommendations[0].title}.`);
+        }
+
+        return summaryParts.join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    async getOpenRouterApiKey() {
+        if (this.openRouterApiKey !== undefined) {
+            return this.openRouterApiKey;
+        }
+
+        if (typeof chrome === 'undefined' ||
+            !chrome.storage ||
+            !chrome.storage.local ||
+            typeof chrome.storage.local.get !== 'function') {
+            this.openRouterApiKey = null;
+            return null;
+        }
+
+        try {
+            const result = await new Promise((resolve, reject) => {
+                try {
+                    chrome.storage.local.get(['openRouterApiKey'], (res) => {
+                        if (chrome.runtime && chrome.runtime.lastError) {
+                            reject(new Error(chrome.runtime.lastError.message));
+                            return;
+                        }
+                        resolve(res);
+                    });
+                } catch (error) {
+                    reject(error);
+                }
+            });
+
+            this.openRouterApiKey = result?.openRouterApiKey || null;
+        } catch (error) {
+            console.warn('OpenRouter API key lookup failed:', error);
+            this.openRouterApiKey = null;
+        }
+
+        return this.openRouterApiKey;
+    }
+
+    buildLLMPrompt(result, analysis) {
+        const downloadMbps = (result?.downloadSpeed || 0) / 1000000;
+        const uploadMbps = (result?.uploadSpeed || 0) / 1000000;
+        const latency = result?.networkInfo?.latency;
+        const ratingLabel = this.getRatingLabel(analysis?.performance?.rating?.overall);
+
+        const issuesList = (analysis?.performance?.issues || []);
+        const strengthsList = (analysis?.performance?.strengths || []);
+        const anomaliesList = (analysis?.anomalies || []);
+        const recommendationsList = (analysis?.recommendations || []).slice(0, 3);
+
+        const issues = issuesList.length
+            ? issuesList.map(issue => ({
+                message: issue.message,
+                severity: issue.severity || 'medium'
+            }))
+            : [];
+
+        const strengths = strengthsList.length
+            ? strengthsList.map(strength => ({
+                message: strength.message,
+                severity: strength.severity || 'low'
+            }))
+            : [];
+
+        const anomalies = anomaliesList.length
+            ? anomaliesList.map(anomaly => ({
+                message: anomaly.message,
+                severity: anomaly.severity || 'medium'
+            }))
+            : [];
+
+        const recommendations = recommendationsList.length
+            ? recommendationsList.map(rec => ({
+                title: rec.title,
+                steps: rec.steps || [],
+                priority: rec.priority || 'medium'
+            }))
+            : [];
+
+        let historicalNote = 'Limited historical data.';
+        const insights = analysis?.historicalInsights;
+        if (insights) {
+            const recentTrend = insights.trends && insights.trends[0];
+            if (recentTrend && typeof recentTrend.percentage === 'number') {
+                historicalNote = `Recent trend: ${recentTrend.direction} (${recentTrend.percentage.toFixed(1)}%).`;
+            } else if (insights.averages?.daily?.download) {
+                historicalNote = `Daily average download ${insights.averages.daily.download.toFixed(1)} Mbps.`;
+            }
+        }
+
+        let predictionNote = 'Prediction unavailable.';
+        if (analysis?.prediction?.downloadSpeed) {
+            const predictedDownload = (analysis.prediction.downloadSpeed || 0) / 1000000;
+            const predictedUpload = (analysis.prediction.uploadSpeed || 0) / 1000000;
+            predictionNote = `Next test prediction: ${predictedDownload.toFixed(1)} Mbps down / ${predictedUpload.toFixed(1)} Mbps up with ${analysis.prediction.confidence} confidence.`;
+        }
+
+        return [
+            'You are a seasoned network performance analyst. Return a single JSON object (no extra text) that matches this schema:',
+            '{',
+            '  "summary": "One to two sentences summarizing current network health.",',
+            '  "action_items": ["Concise action-oriented bullet items."],',
+            '  "recommendations": [',
+            '    {',
+            '      "title": "Short headline",',
+            '      "steps": ["Specific step users can follow"],',
+            '      "priority": "low|medium|high"',
+            '    }',
+            '  ],',
+            '  "prediction": {',
+            '    "download_mbps": number or null,',
+            '    "upload_mbps": number or null,',
+            '    "confidence": "low|medium|high",',
+            '    "notes": "Optional short note."',
+            '  },',
+            '  "issues": [{ "message": "Issue description", "severity": "low|medium|high" }],',
+            '  "strengths": [{ "message": "Strength description", "severity": "low|medium|high" }]',
+            '}',
+            'Use empty arrays when there is nothing to report. Keep values concise and user-friendly.',
+            'Context:',
+            `download_mbps: ${downloadMbps.toFixed(2)}`,
+            `upload_mbps: ${uploadMbps.toFixed(2)}`,
+            `latency_ms: ${typeof latency === 'number' ? latency : 'unknown'}`,
+            `overall_rating: ${ratingLabel}`,
+            `historical_note: ${historicalNote}`,
+            `prediction_note: ${predictionNote}`,
+            `baseline_issues: ${JSON.stringify(issues).replace(/"/g, '\\"')}`,
+            `baseline_strengths: ${JSON.stringify(strengths).replace(/"/g, '\\"')}`,
+            `baseline_anomalies: ${JSON.stringify(anomalies).replace(/"/g, '\\"')}`,
+            `baseline_recommendations: ${JSON.stringify(recommendations).replace(/"/g, '\\"')}`,
+            'Make sure the JSON is valid and contains all required keys.'
+        ].join('\n');
+    }
+
+    async generateLLMInsights(result, analysis) {
+        const apiKey = await this.getOpenRouterApiKey();
+        if (!apiKey) {
+            return { summary: null, reason: 'missing_api_key' };
+        }
+
+        if (typeof fetch !== 'function') {
+            return { summary: null, error: 'fetch API is unavailable in this context.' };
+        }
+
+        const body = {
+            model: this.llmModel,
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are a helpful network performance analyst who writes clear, friendly, and actionable summaries.'
+                },
+                {
+                    role: 'user',
+                    content: this.buildLLMPrompt(result, analysis)
+                }
+            ],
+            max_tokens: 600,
+            temperature: 0.2,
+            top_p: 0.9
+        };
+
+        let controller = null;
+        let timeoutId = null;
+
+        if (typeof AbortController === 'function') {
+            controller = new AbortController();
+            timeoutId = setTimeout(() => {
+                controller.abort();
+            }, this.openRouterTimeoutMs);
+        }
+
+        try {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                    'X-Title': 'Speed Tester Extension'
+                },
+                body: JSON.stringify(body),
+                signal: controller ? controller.signal : undefined
+            });
+
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => response.statusText);
+                throw new Error(`OpenRouter request failed (${response.status}): ${errorText}`);
+            }
+
+            const data = await response.json();
+            const rawContent = data?.choices?.[0]?.message?.content?.trim();
+
+            if (!rawContent) {
+                throw new Error('OpenRouter response did not include content.');
+            }
+
+            const parsedJson = this.extractJSONFromText(rawContent);
+            const structured = this.normalizeLLMStructuredData(parsedJson);
+            const combinedSummary = structured
+                ? this.composeLLMSummary(structured.summary, structured.actionItems)
+                : this.cleanLLMPlainText(rawContent);
+
+            return {
+                summary: combinedSummary || null,
+                structured,
+                model: data?.model || this.llmModel
+            };
+        } catch (error) {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            if (error && error.name === 'AbortError') {
+                return { summary: null, error: 'OpenRouter request timed out.' };
+            }
+            return { summary: null, error: error?.message || 'Unknown OpenRouter error.' };
+        }
+    }
+
+    cleanLLMPlainText(content) {
+        if (typeof content !== 'string') {
+            return null;
+        }
+        let text = content.trim();
+        if (!text) return null;
+
+        // Remove fenced code blocks
+        text = text.replace(/```(?:json)?([\s\S]*?)```/gi, '$1');
+        // Collapse whitespace
+        text = text.replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+        return text || null;
+    }
+
+    extractJSONFromText(content) {
+        if (!content || typeof content !== 'string') {
+            return null;
+        }
+
+        const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/i);
+        let jsonText = codeBlockMatch ? codeBlockMatch[1] : content;
+
+        const firstBrace = jsonText.indexOf('{');
+        const lastBrace = jsonText.lastIndexOf('}');
+
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+            return null;
+        }
+
+        jsonText = jsonText.slice(firstBrace, lastBrace + 1).trim();
+
+        try {
+            return JSON.parse(jsonText);
+        } catch (error) {
+            console.warn('Failed to parse OpenRouter JSON payload:', error);
+            return null;
+        }
+    }
+
+    normalizeLLMStructuredData(raw) {
+        if (!raw || typeof raw !== 'object') {
+            return null;
+        }
+
+        const summary = typeof raw.summary === 'string' ? raw.summary.trim() : '';
+        const actionItems = this.collectStrings(
+            raw.action_items ?? raw.actionItems ?? raw.actions ?? raw.highlights ?? []
+        );
+
+        const recommendations = this.normalizeLLMRecommendations(raw.recommendations ?? raw.suggestions);
+        const issues = this.normalizeLLMFindings(raw.issues ?? raw.concerns, 'medium');
+        const strengths = this.normalizeLLMFindings(raw.strengths ?? raw.positives, 'low');
+
+        const predictionData = raw.prediction ?? raw.forecast ?? null;
+        const prediction = this.normalizeLLMPrediction(predictionData);
+
+        return {
+            summary,
+            actionItems,
+            recommendations,
+            issues,
+            strengths,
+            prediction
+        };
+    }
+
+    collectStrings(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+            return value
+                .map(item => {
+                    if (typeof item === 'string') return item.trim();
+                    if (item && typeof item === 'object' && 'text' in item && typeof item.text === 'string') {
+                        return item.text.trim();
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+        }
+        if (typeof value === 'string') {
+            return value.split(/\n|;/).map(item => item.trim()).filter(Boolean);
+        }
+        return [];
+    }
+
+    normalizeLLMRecommendations(rawRecommendations) {
+        if (!Array.isArray(rawRecommendations)) {
+            return [];
+        }
+
+        const allowedPriorities = new Set(['low', 'medium', 'high']);
+
+        return rawRecommendations
+            .map((item, index) => {
+                if (!item || typeof item !== 'object') {
+                    return null;
+                }
+
+                const titleSources = [
+                    item.title,
+                    item.name,
+                    item.headline,
+                    item.summary
+                ];
+                const title = titleSources.find(val => typeof val === 'string' && val.trim().length > 0)
+                    || `AI Recommendation ${index + 1}`;
+
+                let steps = this.collectStrings(
+                    item.steps ?? item.actions ?? item.action_items ?? item.instructions ?? item.details
+                );
+
+                if (steps.length === 0 && typeof item.description === 'string') {
+                    steps = [item.description.trim()];
+                }
+
+                const priorityRaw = typeof item.priority === 'string'
+                    ? item.priority.toLowerCase().trim()
+                    : null;
+
+                const priority = priorityRaw && allowedPriorities.has(priorityRaw)
+                    ? priorityRaw
+                    : 'medium';
+
+                return {
+                    title,
+                    steps,
+                    priority
+                };
+            })
+            .filter(rec => rec && (rec.title || (rec.steps && rec.steps.length > 0)));
+    }
+
+    normalizeLLMFindings(rawFindings, defaultSeverity = 'medium') {
+        if (!Array.isArray(rawFindings)) {
+            return [];
+        }
+
+        const allowedSeverities = new Set(['low', 'medium', 'high']);
+
+        return rawFindings
+            .map(item => {
+                if (!item) return null;
+                if (typeof item === 'string') {
+                    return {
+                        message: item.trim(),
+                        severity: defaultSeverity
+                    };
+                }
+                if (typeof item === 'object') {
+                    const messageSources = [
+                        item.message,
+                        item.text,
+                        item.detail,
+                        item.description
+                    ];
+                    const message = messageSources.find(val => typeof val === 'string' && val.trim().length > 0);
+                    if (!message) {
+                        return null;
+                    }
+
+                    const severityRaw = typeof item.severity === 'string'
+                        ? item.severity.toLowerCase().trim()
+                        : null;
+                    const severity = severityRaw && allowedSeverities.has(severityRaw)
+                        ? severityRaw
+                        : defaultSeverity;
+
+                    return {
+                        message: message.trim(),
+                        severity
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+    }
+
+    parseNumeric(value) {
+        if (value === null || value === undefined) return null;
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+        if (typeof value === 'string') {
+            const cleaned = value.replace(/[^0-9.+-]/g, '');
+            const parsed = parseFloat(cleaned);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+        return null;
+    }
+
+    normalizeLLMPrediction(rawPrediction) {
+        if (!rawPrediction || typeof rawPrediction !== 'object') {
+            return null;
+        }
+
+        const downloadMbps = this.parseNumeric(
+            rawPrediction.download_mbps ?? rawPrediction.downloadMbps ?? rawPrediction.download
+        );
+        const uploadMbps = this.parseNumeric(
+            rawPrediction.upload_mbps ?? rawPrediction.uploadMbps ?? rawPrediction.upload
+        );
+
+        let confidenceRaw = rawPrediction.confidence;
+        if (typeof confidenceRaw === 'string') {
+            confidenceRaw = confidenceRaw.toLowerCase().trim();
+        }
+        const allowedConfidence = new Set(['low', 'medium', 'high']);
+        const confidence = allowedConfidence.has(confidenceRaw) ? confidenceRaw : undefined;
+
+        const notesSource = rawPrediction.notes ?? rawPrediction.note ?? rawPrediction.summary;
+        const notes = typeof notesSource === 'string' ? notesSource.trim() : undefined;
+
+        const prediction = {};
+
+        if (downloadMbps !== null) {
+            prediction.downloadSpeed = downloadMbps * 1000000;
+        }
+        if (uploadMbps !== null) {
+            prediction.uploadSpeed = uploadMbps * 1000000;
+        }
+        if (confidence) {
+            prediction.confidence = confidence;
+        }
+        if (notes) {
+            prediction.notes = notes;
+        }
+
+        return Object.keys(prediction).length > 0 ? prediction : null;
+    }
+
+    composeLLMSummary(summaryText, actionItems) {
+        const pieces = [];
+
+        if (typeof summaryText === 'string' && summaryText.trim().length > 0) {
+            pieces.push(summaryText.trim());
+        }
+
+        if (Array.isArray(actionItems) && actionItems.length > 0) {
+            const bulletLines = actionItems
+                .map(item => {
+                    if (typeof item !== 'string') return null;
+                    const trimmed = item.trim();
+                    return trimmed.length > 0 ? `- ${trimmed}` : null;
+                })
+                .filter(Boolean);
+
+            if (bulletLines.length > 0) {
+                pieces.push(bulletLines.join('\n'));
+            }
+        }
+
+        if (pieces.length === 0) {
+            return null;
+        }
+
+        return pieces.join('\n').trim();
     }
 }
 

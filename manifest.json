@@ -12,7 +12,9 @@
   "host_permissions": [
     "https://speed.cloudflare.com/*",
     "https://api.ipify.org/*",
-    "https://ipinfo.io/*"
+    "https://ipinfo.io/*",
+    "https://ipwho.is/*",
+    "https://openrouter.ai/*"
   ],
   "background": {
     "service_worker": "background.js"
