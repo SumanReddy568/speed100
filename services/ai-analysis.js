@@ -5,7 +5,7 @@ class NetworkAIAnalysis {
         this.anomalies = []; // Store detected anomalies
         this.openRouterApiKey = undefined;
         this.openRouterTimeoutMs = 12000;
-        this.llmModel = 'openai/gpt-4o';
+        this.llmModel = 'deepseek/deepseek-chat-v3.1:free';
         this.lastLLMError = null;
 
         if (typeof chrome !== 'undefined' &&
