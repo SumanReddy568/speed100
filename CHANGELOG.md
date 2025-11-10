@@ -1,3 +1,6 @@
+## [1.1.0] - 2025-11-10
+- adding real ai intigration
+
 ## [1.0.9] - 2025-11-07
 - api changes
 
