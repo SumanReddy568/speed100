@@ -1,3 +1,6 @@
+## [1.1.3] - 2025-11-10
+- Merge branch master of https://github.com/SumanReddy568/speed100
+
 ## [1.1.2] - 2025-11-10
 - base ai model change
 
