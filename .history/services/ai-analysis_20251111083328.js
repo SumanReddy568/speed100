@@ -5,7 +5,7 @@ class NetworkAIAnalysis {
         this.anomalies = [];
         this.openRouterApiKey = undefined;
         this.openRouterTimeoutMs = 12000;
-        this.llmModel = undefined;
+        this.llmModel = undefined; // Not hardcoded anymore
         this.lastLLMError = null;
 
         // Listen for changes to API key and LLM model in Chrome storage

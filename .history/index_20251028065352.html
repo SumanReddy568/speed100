@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speed Tester - Web Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            color: #4285f4;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #ccc;
+            font-size: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            color: #aaa;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab.active {
+            color: #4285f4;
+            background: rgba(66, 133, 244, 0.1);
+            border-bottom-color: #4285f4;
+        }
+
+        .tab:hover:not(.active) {
+            color: #ddd;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 140px);
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            position: relative;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .iframe-container {
+            flex: 1;
+            position: relative;
+            background: #fff;
+            border-radius: 8px;
+            margin: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            min-height: calc(100vh - 200px);
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            min-height: calc(100vh - 200px);
+            border: none;
+            border-radius: 8px;
+            transform: scale(1);
+            transform-origin: 0 0;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 18px;
+            z-index: 1;
+        }
+
+        .extension-info {
+            padding: 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            margin: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .extension-info h2 {
+            color: #4285f4;
+            margin-bottom: 15px;
+        }
+
+        .extension-info p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .extension-link {
+            display: inline-block;
+            background: linear-gradient(to right, #4285f4, #34a853);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.4);
+        }
+
+        .extension-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.6);
+        }
+
+        .alternative-tests {
+            padding: 20px;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .test-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .test-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .test-card h3 {
+            color: #4285f4;
+            margin-bottom: 10px;
+        }
+
+        .test-card p {
+            color: #ccc;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .test-card a {
+            color: #4285f4;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .test-card a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .tab {
+                font-size: 14px;
+                padding: 12px 15px;
+            }
+
+            .iframe-container {
+                margin: 10px;
+                min-height: calc(100vh - 180px);
+            }
+
+            .iframe-container iframe {
+                min-height: calc(100vh - 180px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🚀 Speed Tester</h1>
+        <p>Test your internet speed with multiple reliable services</p>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('fast')">Speed Tester</button>
+        <button class="tab" onclick="switchTab('extension')">Extension Info</button>
+        <button class="tab" onclick="switchTab('alternatives')">Other Tests</button>
+    </div>
+
+    <div class="content">
+        <!-- Fast.com Tab -->
+        <div id="fast" class="tab-content active">
+            <div class="iframe-container">
+                <div class="loading">Loading Fast.com...</div>
+                <iframe src="https://fast.com" onload="document.querySelector('.loading').style.display='none'"
+                    title="Fast.com Speed Test"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                    loading="lazy">
+                </iframe>
+            </div>
+        </div>
+
+        <!-- Extension Info Tab -->
+        <div id="extension" class="tab-content">
+            <div class="extension-info">
+                <h2>📊 Speed Tester Chrome Extension</h2>
+                <p>Get detailed network analysis with our advanced Chrome extension featuring:</p>
+                <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
+                    <li>✅ Real-time speed testing with visual speedometers</li>
+                    <li>🤖 AI-powered network insights and recommendations</li>
+                    <li>📈 Speed history tracking and analysis</li>
+                    <li>🔍 Detailed network information and diagnostics</li>
+                    <li>⚡ Load testing capabilities for sustained performance</li>
+                    <li>📱 Clean, modern interface with dark mode</li>
+                </ul>
+                <a href="https://chromewebstore.google.com/detail/speed-tester/ikgbkmpmehkhjmhbfpoocemgkdhgjcln?utm_source=item-share-cb" class="extension-link">
+                    Open Extension
+                </a>
+                <p style="margin-top: 15px; font-size: 14px; color: #888;">
+                    Click the extension icon in your Chrome toolbar or use the link above
+                </p>
+            </div>
+        </div>
+
+        <!-- Alternative Tests Tab -->
+        <div id="alternatives" class="tab-content">
+            <div class="alternative-tests">
+                <h2 style="text-align: center; color: #4285f4; margin-bottom: 30px;">Alternative Speed Tests</h2>
+                <div class="test-grid">
+                    <div class="test-card">
+                        <h3>Speedtest.net</h3>
+                        <p>One of the most popular and comprehensive speed testing services with detailed analytics.</p>
+                        <a href="https://speedtest.net" target="_blank">Visit Speedtest.net →</a>
+                    </div>
+
+                    <div class="test-card">
+                        <h3>Google Speed Test</h3>
+                        <p>Quick and simple speed test directly from Google search results.</p>
+                        <a href="https://www.google.com/search?q=speed+test" target="_blank">Google Speed Test →</a>
+                    </div>
+
+                    <div class="test-card">
+                        <h3>Cloudflare Speed Test</h3>
+                        <p>Modern speed test focusing on real-world internet performance metrics.</p>
+                        <a href="https://speed.cloudflare.com" target="_blank">Cloudflare Test →</a>
+                    </div>
+
+                    <div class="test-card">
+                        <h3>TestMy.net</h3>
+                        <p>Independent speed test that doesn't use Flash or Java, focusing on accuracy.</p>
+                        <a href="https://testmy.net" target="_blank">TestMy.net →</a>
+                    </div>
+
+                    <div class="test-card">
+                        <h3>OpenSpeedTest</h3>
+                        <p>Open-source HTML5 speed test with no plugins or apps required.</p>
+                        <a href="https://openspeedtest.com" target="_blank">OpenSpeedTest →</a>
+                    </div>
+
+                    <div class="test-card">
+                        <h3>SpeedOf.Me</h3>
+                        <p>Browser-based speed test using real files for accurate measurements.</p>
+                        <a href="https://speedof.me" target="_blank">SpeedOf.Me →</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Add some loading animation
+        document.addEventListener('DOMContentLoaded', function () {
+            const iframe = document.querySelector('iframe');
+            let dots = 0;
+            const loadingText = document.querySelector('.loading');
+
+            const loadingInterval = setInterval(() => {
+                dots = (dots + 1) % 4;
+                loadingText.textContent = 'Loading Fast.com' + '.'.repeat(dots);
+            }, 500);
+
+            iframe.onload = () => {
+                clearInterval(loadingInterval);
+                loadingText.style.display = 'none';
+            };
+        });
+    </script>
+</body>
+
+</html>

@@ -5,7 +5,7 @@ class NetworkAIAnalysis {
         this.anomalies = [];
         this.openRouterApiKey = undefined;
         this.openRouterTimeoutMs = 12000;
-        this.llmModel = undefined;
+        this.llmModel = undefined; // Not hardcoded anymore
         this.lastLLMError = null;
 
         // Listen for changes to API key and LLM model in Chrome storage
@@ -168,7 +168,7 @@ class NetworkAIAnalysis {
     analyzePerformance(result) {
         const downloadMbps = result.downloadSpeed / 1000000;
         const uploadMbps = result.uploadSpeed / 1000000;
-
+        
         return {
             rating: this.calculateRating(downloadMbps, uploadMbps),
             issues: this.identifyIssues(result),
@@ -182,7 +182,7 @@ class NetworkAIAnalysis {
             upload: this.getRating(uploadMbps, [5, 10, 20, 40]),
             overall: 0
         };
-
+        
         ratings.overall = (ratings.download + ratings.upload) / 2;
         return ratings;
     }

@@ -37,8 +37,6 @@ document.addEventListener('DOMContentLoaded', function () {
         settingsModal: document.getElementById('settings-modal'),
         closeModal: document.querySelector('.close'),
         testInterval: document.getElementById('test-interval'),
-        openRouterApiKeyInput: document.getElementById('openrouter-api-key'),
-        llmModelInput: document.getElementById('llm-model'), // Add this input in your settings modal HTML
         saveSettings: document.getElementById('save-settings'),
 
         // Container elements
@@ -135,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const timeLabels = document.querySelector('.graph-time-labels');
         const emptyState = document.getElementById('speed-history-empty-state');
         const graphContent = document.querySelector('.graph-content-data');
-
+        
         if (!speedTestHistory || speedTestHistory.length === 0) {
             if (emptyState) emptyState.style.display = 'flex';
             if (graphContent) graphContent.style.display = 'none';
@@ -144,13 +142,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (emptyState) emptyState.style.display = 'none';
         if (graphContent) graphContent.style.display = 'block';
-
+        
         if (!canvas || !container || !speedTestHistory || speedTestHistory.length === 0) return;
-
+        
         // Clear existing content
         timeLabels.innerHTML = '';
         const ctx = canvas.getContext('2d');
-
+        
         // Set canvas size
         const dpr = window.devicePixelRatio || 1;
         const rect = container.getBoundingClientRect();
@@ -159,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
         canvas.style.width = `${rect.width}px`;
         canvas.style.height = `${rect.height}px`;
         ctx.scale(dpr, dpr);
-
+        
         // Clear previous content
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -170,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Find max speed for scaling
         const maxSpeed = Math.max(
-            ...recentTests.map(test =>
+            ...recentTests.map(test => 
                 Math.max((test.downloadSpeed || 0) / 1000000, (test.uploadSpeed || 0) / 1000000)
             ),
             1 // Minimum scale
@@ -207,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.fillStyle = '#fff';
             ctx.font = '10px Arial';
             ctx.textAlign = 'center';
-
+            
             // Download speed label
             ctx.fillText(
                 `${(test.downloadSpeed / 1000000).toFixed(1)}`,
@@ -238,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.moveTo(padding.left, y);
             ctx.lineTo(rect.width - padding.right, y);
             ctx.stroke();
-
+            
             // Add speed scale
             ctx.fillStyle = '#666';
             ctx.textAlign = 'right';
@@ -252,9 +250,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateLoadHistory() {
         if (!elements.loadHistoryList) return;
-
+        
         elements.loadHistoryList.innerHTML = '';
-
+        
         if (!loadTestHistory || loadTestHistory.length === 0) {
             const emptyState = document.createElement('div');
             emptyState.className = 'empty-state';
@@ -262,11 +260,11 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.loadHistoryList.appendChild(emptyState);
             return;
         }
-
+        
         loadTestHistory.slice(0, 3).forEach(test => {
             const item = document.createElement('div');
             item.className = 'load-history-item';
-
+            
             const date = new Date(test.timestamp);
             item.innerHTML = `
                 <span class="info-label">File Size:</span>
@@ -277,14 +275,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 <span class="info-value">${test.totalTime.toFixed(1)}s</span>
                 <div class="load-history-time">${date.toLocaleString()}</div>
             `;
-
+            
             elements.loadHistoryList.appendChild(item);
         });
     }
 
     // Initialize graph collapsed state from storage
     function initializeGraphState() {
-        chrome.storage.local.get(['historyCollapsed'], function (result) {
+        chrome.storage.local.get(['historyCollapsed'], function(result) {
             const graph = document.querySelector('.speed-history-graph');
             if (result.historyCollapsed) {
                 graph.classList.add('collapsed');
@@ -315,91 +313,38 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const escapeHtml = (text) => {
-            if (typeof text !== 'string') return '';
-            return text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
-
-        const overallScore = typeof analysis?.performance?.rating?.overall === 'number'
-            ? analysis.performance.rating.overall
-            : null;
-        const issues = Array.isArray(analysis?.performance?.issues) ? analysis.performance.issues : [];
-        const strengths = Array.isArray(analysis?.performance?.strengths) ? analysis.performance.strengths : [];
-        const summaryText = typeof analysis?.performance?.summary === 'string'
-            ? analysis.performance.summary
-            : (typeof analysis?.llmSummary === 'string' ? analysis.llmSummary : '');
-
         // Performance Analysis
         let performanceHTML = `<div class="ai-performance-rating">
-            <span class="rating-score">${overallScore !== null ? overallScore.toFixed(1) : '–'}</span>
+            <span class="rating-score">${analysis.performance.rating.overall.toFixed(1)}</span>
             <span>Overall Rating</span>
         </div>`;
 
-        if (summaryText) {
-            const lines = summaryText.split('\n').map(line => line.trim()).filter(Boolean);
-            const bulletLines = [];
-            const proseLines = [];
-
-            lines.forEach(line => {
-                if (line.startsWith('-')) {
-                    bulletLines.push(line.replace(/^-+/, '').trim());
-                } else {
-                    proseLines.push(line);
-                }
-            });
-
-            proseLines.forEach(line => {
-                performanceHTML += `<p class="ai-summary-text">${escapeHtml(line)}</p>`;
-            });
-
-            if (bulletLines.length > 0) {
-                performanceHTML += `<ul class="ai-summary-list">${bulletLines.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
-            }
-        }
-
-        if (issues.length > 0) {
-            issues.forEach(issue => {
-                performanceHTML += `<p><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(issue.message)}</p>`;
+        if (analysis.performance.issues && analysis.performance.issues.length > 0) {
+            analysis.performance.issues.forEach(issue => {
+                performanceHTML += `<p><i class="fas fa-exclamation-triangle"></i> ${issue.message}</p>`;
             });
         }
 
-        if (strengths.length > 0) {
-            strengths.forEach(strength => {
-                performanceHTML += `<p><i class="fas fa-check-circle"></i> ${escapeHtml(strength.message)}</p>`;
+        if (analysis.performance.strengths && analysis.performance.strengths.length > 0) {
+            analysis.performance.strengths.forEach(strength => {
+                performanceHTML += `<p><i class="fas fa-check-circle"></i> ${strength.message}</p>`;
             });
-        }
-
-        if (analysis.meta?.llmUsed) {
-            const modelName = analysis.meta.llmModel ? escapeHtml(analysis.meta.llmModel) : 'OpenRouter';
-            const message = analysis.meta?.summarySource === 'openrouter'
-                ? `AI summary generated with ${modelName}.`
-                : `AI-assisted insights generated with ${modelName}.`;
-            performanceHTML += `<p class="ai-meta">${escapeHtml(message)}</p>`;
-        }
-
-        if (analysis.meta?.llmError) {
-            performanceHTML += `<p class="ai-meta ai-meta-warning">${escapeHtml(analysis.meta.llmError)}</p>`;
         }
 
         elements.aiPerformance.innerHTML = performanceHTML;
 
         // Recommendations
         let recommendationsHTML = '';
-        if (Array.isArray(analysis.recommendations) && analysis.recommendations.length > 0) {
+        if (analysis.recommendations && analysis.recommendations.length > 0) {
             analysis.recommendations.forEach(rec => {
                 recommendationsHTML += `
                     <div class="ai-recommendation">
                         <h5>
                             <i class="fas fa-lightbulb"></i>
-                            ${escapeHtml(rec.title)}
+                            ${rec.title}
                         </h5>
                         <ul>
-                            ${Array.isArray(rec.steps) ? rec.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('') : ''}
+                            ${rec.steps.map(step => `<li>${step}</li>`).join('')}
                         </ul>
                     </div>`;
             });
@@ -410,44 +355,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Predictions
         let predictionsHTML = '';
-        if (analysis.prediction) {
-            const hasDownload = typeof analysis.prediction.downloadSpeed === 'number';
-            const hasUpload = typeof analysis.prediction.uploadSpeed === 'number';
-            const hasNotes = typeof analysis.prediction.notes === 'string' && analysis.prediction.notes.trim().length > 0;
-
-            if (hasDownload || hasUpload) {
-                const predictionLines = [];
-                if (hasDownload) {
-                    predictionLines.push(`<p>Predicted Download: ${(analysis.prediction.downloadSpeed / 1000000).toFixed(1)} Mbps</p>`);
-                }
-                if (hasUpload) {
-                    predictionLines.push(`<p>Predicted Upload: ${(analysis.prediction.uploadSpeed / 1000000).toFixed(1)} Mbps</p>`);
-                }
-
-                const confidenceValue = typeof analysis.prediction.confidence === 'string'
-                    ? analysis.prediction.confidence.toLowerCase()
-                    : '';
-                const allowedConfidence = ['low', 'medium', 'high'];
-                const confidenceClass = allowedConfidence.includes(confidenceValue) ? confidenceValue : 'medium';
-                if (confidenceValue) {
-                    const confidenceLabel = confidenceValue.charAt(0).toUpperCase() + confidenceValue.slice(1);
-                    predictionLines.push(`
-                        <span class="prediction-confidence confidence-${confidenceClass}">
-                            ${escapeHtml(confidenceLabel)} confidence
-                        </span>`);
-                }
-
-                if (hasNotes) {
-                    predictionLines.push(`<p class="prediction-note">${escapeHtml(analysis.prediction.notes)}</p>`);
-                }
-
-                predictionsHTML = predictionLines.join('\n');
-            } else if (hasNotes) {
-                predictionsHTML = `<p class="prediction-note">${escapeHtml(analysis.prediction.notes)}</p>`;
-            }
-        }
-
-        if (!predictionsHTML) {
+        if (analysis.prediction && analysis.prediction.downloadSpeed) {
+            predictionsHTML = `
+                <p>Predicted Download: ${(analysis.prediction.downloadSpeed / 1000000).toFixed(1)} Mbps</p>
+                <p>Predicted Upload: ${(analysis.prediction.uploadSpeed / 1000000).toFixed(1)} Mbps</p>
+                <span class="prediction-confidence confidence-${analysis.prediction.confidence}">
+                    ${analysis.prediction.confidence} confidence
+                </span>`;
+        } else {
             predictionsHTML = '<p>Not enough data for predictions</p>';
         }
         elements.aiPredictions.innerHTML = predictionsHTML;
@@ -464,19 +379,19 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update the click handlers for collapsible sections
     function initializeCollapsibleSections() {
         const sections = [
-            {
+            { 
                 id: 'speed-history-header',
                 element: document.querySelector('.speed-history-graph'),
                 storageKey: 'speedHistoryCollapsed',
                 updateFn: updateHistoryGraph
             },
-            {
+            { 
                 id: 'load-history-header',
                 element: document.querySelector('.load-history-graph'),
                 storageKey: 'loadHistoryCollapsed',
                 updateFn: updateLoadHistory
             },
-            {
+            { 
                 id: 'network-info-header',
                 element: document.querySelector('.network-info'),
                 storageKey: 'networkInfoCollapsed'
@@ -486,11 +401,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 element: document.querySelector('.ai-insights'),
                 storageKey: 'aiInsightsCollapsed',
                 updateFn: updateAIInsightsContent
-            },
-            {
-                id: 'additional-tools-header',
-                element: document.querySelector('.additional-tools'),
-                storageKey: 'additionalToolsCollapsed'
             }
         ];
 
@@ -499,11 +409,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (header && section.element) {
                 header.addEventListener('click', () => {
                     section.element.classList.toggle('collapsed');
-
+                    
                     if (!section.element.classList.contains('collapsed') && section.updateFn) {
                         setTimeout(section.updateFn, 300);
                     }
-
+                    
                     chrome.storage.local.set({
                         [section.storageKey]: section.element.classList.contains('collapsed')
                     });
@@ -512,7 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Initialize collapsed states
-        chrome.storage.local.get(sections.map(s => s.storageKey), function (result) {
+        chrome.storage.local.get(sections.map(s => s.storageKey), function(result) {
             sections.forEach(section => {
                 if (section.element && result[section.storageKey]) {
                     section.element.classList.add('collapsed');
@@ -732,11 +642,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     uploadSpeed: request.uploadSpeed,
                     timestamp: Date.now()
                 };
-
+                
                 speedTestHistory.unshift(newTest);
                 speedTestHistory = speedTestHistory.slice(0, 3);
                 updateHistoryGraph();
-
+                
                 // Save to storage
                 chrome.storage.local.set({ speedTestHistory: speedTestHistory });
             }
@@ -764,44 +674,15 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.settingsModal.style.display = 'none';
     });
 
-    elements.saveSettings.addEventListener('click', async () => {
+    elements.saveSettings.addEventListener('click', () => {
         const interval = elements.testInterval.value;
-        const apiKey = elements.openRouterApiKeyInput ? elements.openRouterApiKeyInput.value.trim() : '';
-        const llmModel = elements.llmModelInput ? elements.llmModelInput.value.trim() : '';
-
-        const storagePromises = [
-            chrome.storage.sync.set({ testInterval: interval })
-        ];
-
-        if (elements.openRouterApiKeyInput) {
-            if (apiKey) {
-                storagePromises.push(chrome.storage.local.set({ openRouterApiKey: apiKey }));
-            } else {
-                storagePromises.push(chrome.storage.local.remove('openRouterApiKey'));
-            }
-        }
-
-        // Save LLM model to both local and sync for compatibility
-        if (elements.llmModelInput) {
-            if (llmModel) {
-                storagePromises.push(chrome.storage.local.set({ llmModel }));
-                storagePromises.push(chrome.storage.sync.set({ llmModel }));
-            } else {
-                storagePromises.push(chrome.storage.local.remove('llmModel'));
-                storagePromises.push(chrome.storage.sync.remove('llmModel'));
-            }
-        }
-
-        try {
-            await Promise.all(storagePromises);
+        chrome.storage.sync.set({ testInterval: interval }, function () {
             chrome.alarms.clear('nextSpeedTest');
             if (interval !== '0') {
-                chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(interval, 10) });
+                chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(interval) });
             }
             elements.settingsModal.style.display = 'none';
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-        }
+        });
     });
 
     window.addEventListener('click', (event) => {
@@ -833,10 +714,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     elements.startLoadTest.addEventListener('click', async () => {
         if (isLoadTestRunning) return;
-
+        
         const fileSizeMB = parseInt(elements.loadSizeSelect.value, 10);
         const speedTest = new window.SpeedTest();
-
+        
         // Update UI for test start
         isLoadTestRunning = true;
         elements.startLoadTest.disabled = true;
@@ -844,12 +725,12 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.runTestBtn.disabled = true;
         elements.runLoadTestBtn.disabled = true;
         document.body.classList.add('test-running');
-
+        
         try {
             const result = await speedTest.runLoadTest(fileSizeMB, (progress) => {
                 elements.progressFill.style.width = `${progress.progress * 100}%`;
                 updateSpeedometer('download', progress.speedMbps);
-                elements.loadTestStatus.textContent =
+                elements.loadTestStatus.textContent = 
                     `Speed: ${progress.speedMbps.toFixed(2)} Mbps | ` +
                     `${(progress.bytesReceived / 1024 / 1024).toFixed(0)}MB of ${fileSizeMB}MB | ` +
                     `Time: ${progress.elapsedSeconds.toFixed(1)}s`;
@@ -863,16 +744,16 @@ document.addEventListener('DOMContentLoaded', function () {
                     averageSpeedMbps: result.averageSpeedMbps,
                     totalTime: result.totalTime
                 };
-
+                
                 loadTestHistory.unshift(historyEntry);
                 loadTestHistory = loadTestHistory.slice(0, 3); // Keep only last 3 tests
-
+                
                 // Save to storage
                 chrome.storage.local.set({ loadTestHistory });
-
+                
                 // Update UI
                 updateLoadHistory();
-                elements.loadTestStatus.textContent =
+                elements.loadTestStatus.textContent = 
                     `Complete! Average Speed: ${result.averageSpeedMbps.toFixed(2)} Mbps | ` +
                     `Total Time: ${result.totalTime.toFixed(1)}s`;
             } else {
@@ -888,7 +769,7 @@ document.addEventListener('DOMContentLoaded', function () {
             elements.runTestBtn.disabled = false;
             elements.runLoadTestBtn.disabled = false;
             document.body.classList.remove('test-running');
-
+            
             setTimeout(() => {
                 updateSpeedometer('download', 0);
             }, 2000);
@@ -897,7 +778,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to check if it's time to show the review prompt
     function checkReviewPrompt() {
-        chrome.storage.local.get(['runsCount', 'reviewPromptShown'], function (data) {
+        chrome.storage.local.get(['runsCount', 'reviewPromptShown'], function(data) {
             let runsCount = data.runsCount || 0;
             const reviewPromptShown = data.reviewPromptShown || false;
 
@@ -1007,7 +888,7 @@ document.addEventListener('DOMContentLoaded', function () {
             closeButton.style.transform = 'translateY(-50%) scale(1)';
         });
 
-        closeButton.onclick = function () {
+        closeButton.onclick = function() {
             banner.style.opacity = '0';
             banner.style.transform = 'translateY(100%)';
             setTimeout(() => {
@@ -1028,112 +909,27 @@ document.addEventListener('DOMContentLoaded', function () {
     // Promotional Banner Management
     const promoBanner = document.getElementById('promotional-banner');
     const promoClose = document.getElementById('promo-close');
-    const rateUsLink = document.querySelector('.promo-link.rate');
-    const aiAgentsLink = document.querySelector('.promo-link.ai');
-
-    // Check promotional banner status
-    function checkPromoBannerStatus() {
-        const rateUsClicked = localStorage.getItem('promoRateUsClicked') === 'true';
-        const aiAgentsClicked = localStorage.getItem('promoAiAgentsClicked') === 'true';
-        const bannerClosed = localStorage.getItem('promoBannerClosed') === 'true';
-
-        // Update visual state of links
-        if (rateUsClicked && rateUsLink) {
-            rateUsLink.classList.add('clicked');
-        }
-        if (aiAgentsClicked && aiAgentsLink) {
-            aiAgentsLink.classList.add('clicked');
-        }
-
-        // Only hide permanently if both links were clicked
-        // Ignore manual close - always show banner unless both links clicked
-        if (rateUsClicked && aiAgentsClicked) {
-            promoBanner.classList.add('hidden');
-        } else {
-            promoBanner.classList.remove('hidden');
-            // Clear the manual close flag so banner shows again
-            localStorage.removeItem('promoBannerClosed');
-        }
-
-        // Update banner message if one link is clicked
-        const bannerTitle = promoBanner.querySelector('h4');
-        if (bannerTitle) {
-            if (rateUsClicked && !aiAgentsClicked) {
-                bannerTitle.textContent = '🤖 Check out our AI agents too!';
-            } else if (aiAgentsClicked && !rateUsClicked) {
-                bannerTitle.textContent = '⭐ Don\'t forget to rate us!';
-            } else if (!rateUsClicked && !aiAgentsClicked) {
-                bannerTitle.textContent = '✨ Help us improve & discover more!';
-            }
-        }
+    
+    // Check if banner was previously closed
+    const bannerClosed = localStorage.getItem('promoBannerClosed');
+    
+    if (bannerClosed === 'true') {
+        promoBanner.classList.add('hidden');
     }
-
-    // Initialize banner status
-    checkPromoBannerStatus();
-
-    // Handle rate us link click
-    if (rateUsLink) {
-        rateUsLink.addEventListener('click', function (e) {
-            localStorage.setItem('promoRateUsClicked', 'true');
-            rateUsLink.classList.add('clicked');
-
-            // Update banner message
-            const aiAgentsClicked = localStorage.getItem('promoAiAgentsClicked') === 'true';
-            const bannerTitle = promoBanner.querySelector('h4');
-
-            if (!aiAgentsClicked) {
-                bannerTitle.textContent = '🤖 Check out our AI agents too!';
-            } else {
-                // Both clicked - hide banner
-                setTimeout(() => {
-                    promoBanner.style.opacity = '0';
-                    promoBanner.style.transform = 'translateY(-10px)';
-                    setTimeout(() => {
-                        promoBanner.classList.add('hidden');
-                    }, 300);
-                }, 1000);
-            }
-        });
-    }
-
-    // Handle AI agents link click
-    if (aiAgentsLink) {
-        aiAgentsLink.addEventListener('click', function (e) {
-            localStorage.setItem('promoAiAgentsClicked', 'true');
-            aiAgentsLink.classList.add('clicked');
-
-            // Update banner message
-            const rateUsClicked = localStorage.getItem('promoRateUsClicked') === 'true';
-            const bannerTitle = promoBanner.querySelector('h4');
-
-            if (!rateUsClicked) {
-                bannerTitle.textContent = '⭐ Don\'t forget to rate us!';
-            } else {
-                // Both clicked - hide banner
-                setTimeout(() => {
-                    promoBanner.style.opacity = '0';
-                    promoBanner.style.transform = 'translateY(-10px)';
-                    setTimeout(() => {
-                        promoBanner.classList.add('hidden');
-                    }, 300);
-                }, 1000);
-            }
-        });
-    }
-
-    // Handle close button click (manual close)
+    
+    // Handle close button click
     if (promoClose) {
-        promoClose.addEventListener('click', function (e) {
+        promoClose.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-
-            // Hide banner with animation (temporarily)
+            
+            // Hide banner with animation
             promoBanner.style.opacity = '0';
             promoBanner.style.transform = 'translateY(-10px)';
-
+            
             setTimeout(() => {
                 promoBanner.classList.add('hidden');
-                // Store temporary close preference (will be cleared on next popup open)
+                // Store preference in localStorage
                 localStorage.setItem('promoBannerClosed', 'true');
             }, 300);
         });
@@ -1152,7 +948,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initializeNetworkInfoState();
 
         // Load test histories
-        chrome.storage.local.get(['speedTestHistory', 'loadTestHistory'], function (result) {
+        chrome.storage.local.get(['speedTestHistory', 'loadTestHistory'], function(result) {
             if (result.speedTestHistory) {
                 speedTestHistory = result.speedTestHistory;
                 updateHistoryGraph();
@@ -1169,7 +965,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize network info collapsed state
     function initializeNetworkInfoState() {
-        chrome.storage.local.get(['networkInfoCollapsed'], function (result) {
+        chrome.storage.local.get(['networkInfoCollapsed'], function(result) {
             const networkInfo = document.querySelector('.network-info');
             if (result.networkInfoCollapsed) {
                 networkInfo.classList.add('collapsed');
@@ -1238,23 +1034,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Initialize settings
 function initializeSettings(elements) {
-    chrome.storage.sync.get(['testInterval', 'llmModel'], function (result) {
+    chrome.storage.sync.get(['testInterval'], function (result) {
         elements.testInterval.value = result.testInterval || '30';
-        if (elements.llmModelInput) {
-            elements.llmModelInput.value = result.llmModel || 'kwaipilot/kat-coder-pro:free';
-        }
         updateTimestamp(elements);
     });
-
-    if (elements.openRouterApiKeyInput) {
-        chrome.storage.local.get(['openRouterApiKey'], function (result) {
-            if (result && typeof result.openRouterApiKey === 'string') {
-                elements.openRouterApiKeyInput.value = result.openRouterApiKey;
-            } else {
-                elements.openRouterApiKeyInput.value = '';
-            }
-        });
-    }
 }
 
 // Update timestamp

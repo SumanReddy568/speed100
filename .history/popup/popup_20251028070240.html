@@ -94,18 +94,6 @@
             <button id="run-load-test-btn" class="test-button secondary">Run Load Test</button>
         </div>
         <div id="test-status" class="status-message"></div>
-
-        <!-- API Banner -->
-        <div class="api-banner">
-            <div class="api-content">
-                <span class="api-text">🚀 Try our Speed Test API</span>
-                <a href="https://speedtest-api-1q3l.onrender.com/docs" target="_blank" class="api-link">
-                    <i class="fas fa-code"></i>
-                    View API Docs
-                </a>
-            </div>
-        </div>
-
         <!-- Promotional Banner -->
         <div class="promotional-banner" id="promotional-banner">
             <span class="promo-close" id="promo-close">&times;</span>
@@ -123,6 +111,27 @@
             </div>
         </div>
         <div class="info-grid">
+            <!-- Additional Tools Section -->
+            <div class="additional-tools collapsed">
+                <div class="info-header" id="additional-tools-header">
+                    <h3>Additional Tools</h3>
+                    <i class="fas fa-chevron-down expand-icon"></i>
+                </div>
+                <div class="info-content">
+                    <div class="info-section">
+                        <div class="tools-links">
+                            <a href="https://speedtesterr.netlify.app/" target="_blank" class="tool-link">
+                                <i class="fas fa-globe"></i>
+                                Multi Web Speed Tests
+                            </a>
+                            <a href="https://ailqaagents.netlify.app/" target="_blank" class="tool-link">
+                                <i class="fas fa-robot"></i>
+                                AI Powered QA Agents
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Speed History Graph -->
             <div class="speed-history-graph collapsed">
                 <div class="history-header" id="speed-history-header">
@@ -273,28 +282,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Additional Tools Section -->
-            <div class="additional-tools collapsed">
-                <div class="info-header" id="additional-tools-header">
-                    <h3>Additional Tools</h3>
-                    <i class="fas fa-chevron-down expand-icon"></i>
-                </div>
-                <div class="info-content">
-                    <div class="info-section">
-                        <div class="tools-links">
-                            <a href="https://speedtesterr.netlify.app/" target="_blank" class="tool-link">
-                                <i class="fas fa-globe"></i>
-                                Multi Web Speed Tests
-                            </a>
-                            <a href="https://ailqaagents.netlify.app/" target="_blank" class="tool-link">
-                                <i class="fas fa-robot"></i>
-                                AI Powered QA Agents
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Load Test Modal -->
@@ -330,7 +317,7 @@
 
         <div class="version-container">
             <span>Version: </span>
-            <span id="app-version">1.1.3</span>
+            <span id="app-version">1.0.7</span>
         </div>
     </div>
 
@@ -339,52 +326,31 @@
         <div class="modal-content">
             <span class="close">&times;</span>
             <h3>Settings</h3>
-            <div class="settings-body">
-                <div class="setting-option">
-                    <label for="test-interval">Automatic Test Interval (minutes):</label>
-                    <select id="test-interval">
-                        <option value="2">2</option>
-                        <option value="5">5</option>
-                        <option value="15">15</option>
-                        <option value="30" selected>30</option>
-                        <option value="60">60</option>
-                        <option value="120">120</option>
-                        <option value="0">Disabled</option>
-                    </select>
-                </div>
+            <div class="setting-option">
+                <label for="test-interval">Automatic Test Interval (minutes):</label>
+                <select id="test-interval">
+                    <option value="2">2</option>
+                    <option value="5">5</option>
+                    <option value="15">15</option>
+                    <option value="30" selected>30</option>
+                    <option value="60">60</option>
+                    <option value="120">120</option>
+                    <option value="0">Disabled</option>
+                </select>
+            </div>
 
-                <!-- AI Settings Section -->
-                <div class="ai-settings-section">
-                    <h4 class="ai-settings-title"><i class="fas fa-robot"></i> AI Settings</h4>
-                    <div class="setting-option">
-                        <label for="llm-model">LLM Model:</label>
-                        <input type="text" id="llm-model" placeholder="kwaipilot/kat-coder-pro:free">
-                        <small class="setting-hint">Set your preferred OpenRouter model. See <a
-                                href="https://openrouter.ai/docs/overview/models" target="_blank"
-                                class="models-link">available models</a>.</small>
-                    </div>
-                    <div class="setting-option">
-                        <label for="openrouter-api-key">OpenRouter API Key:</label>
-                        <input type="password" id="openrouter-api-key" placeholder="sk-or-v1-..." autocomplete="off">
-                        <small class="setting-hint">Enhanced AI insights. Check
-                            https://openrouter.ai/docs/overview/models to
-                            get started.</small>
-                    </div>
-                </div>
-
-                <!-- Additional Tools Section -->
-                <div class="setting-option">
-                    <label>Additional Tools:</label>
-                    <div class="tools-links">
-                        <a href="https://speedtesterr.netlify.app/" target="_blank" class="tool-link">
-                            <i class="fas fa-globe"></i>
-                            Multi Web Speed Tests
-                        </a>
-                        <a href="https://ailqaagents.netlify.app/" target="_blank" class="tool-link">
-                            <i class="fas fa-robot"></i>
-                            AI Powered QA Agents
-                        </a>
-                    </div>
+            <!-- Additional Tools Section -->
+            <div class="setting-option">
+                <label>Additional Tools:</label>
+                <div class="tools-links">
+                    <a href="https://speedtesterr.netlify.app/" target="_blank" class="tool-link">
+                        <i class="fas fa-globe"></i>
+                        Multi Web Speed Tests
+                    </a>
+                    <a href="https://ailqaagents.netlify.app/" target="_blank" class="tool-link">
+                        <i class="fas fa-robot"></i>
+                        AI Powered QA Agents
+                    </a>
                 </div>
             </div>
 

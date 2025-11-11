@@ -467,41 +467,13 @@ svg line {
 
 .modal-content {
     background-color: #2a2a2a;
-    margin: 10% auto;
+    margin: 15% auto;
     padding: 20px;
     border: 1px solid #444;
     border-radius: 12px;
-    width: 85%;
-    max-width: 320px;
-    max-height: 80vh;
+    width: 80%;
+    max-width: 300px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-}
-
-.settings-body {
-    overflow-y: auto;
-    max-height: 60vh;
-    padding-right: 5px;
-    margin-bottom: 15px;
-}
-
-.settings-body::-webkit-scrollbar {
-    width: 6px;
-}
-
-.settings-body::-webkit-scrollbar-track {
-    background: #333;
-    border-radius: 3px;
-}
-
-.settings-body::-webkit-scrollbar-thumb {
-    background: #555;
-    border-radius: 3px;
-}
-
-.settings-body::-webkit-scrollbar-thumb:hover {
-    background: #666;
 }
 
 .modal-content h3 {
@@ -593,19 +565,9 @@ svg line {
     font-size: 14px;
 }
 
-.models-link {
-    color: #fff !important;
-    text-decoration: underline;
-}
-
-.models-link:hover {
-    color: #ddd !important;
-}
-
 #save-settings {
-    margin-top: 0;
+    margin-top: 20px;
     width: 100%;
-    flex-shrink: 0;
 }
 
 /* Speed History Graph Styles */

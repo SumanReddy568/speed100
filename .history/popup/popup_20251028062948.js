@@ -37,8 +37,6 @@ document.addEventListener('DOMContentLoaded', function () {
         settingsModal: document.getElementById('settings-modal'),
         closeModal: document.querySelector('.close'),
         testInterval: document.getElementById('test-interval'),
-        openRouterApiKeyInput: document.getElementById('openrouter-api-key'),
-        llmModelInput: document.getElementById('llm-model'), // Add this input in your settings modal HTML
         saveSettings: document.getElementById('save-settings'),
 
         // Container elements
@@ -315,91 +313,38 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const escapeHtml = (text) => {
-            if (typeof text !== 'string') return '';
-            return text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        };
-
-        const overallScore = typeof analysis?.performance?.rating?.overall === 'number'
-            ? analysis.performance.rating.overall
-            : null;
-        const issues = Array.isArray(analysis?.performance?.issues) ? analysis.performance.issues : [];
-        const strengths = Array.isArray(analysis?.performance?.strengths) ? analysis.performance.strengths : [];
-        const summaryText = typeof analysis?.performance?.summary === 'string'
-            ? analysis.performance.summary
-            : (typeof analysis?.llmSummary === 'string' ? analysis.llmSummary : '');
-
         // Performance Analysis
         let performanceHTML = `<div class="ai-performance-rating">
-            <span class="rating-score">${overallScore !== null ? overallScore.toFixed(1) : '–'}</span>
+            <span class="rating-score">${analysis.performance.rating.overall.toFixed(1)}</span>
             <span>Overall Rating</span>
         </div>`;
 
-        if (summaryText) {
-            const lines = summaryText.split('\n').map(line => line.trim()).filter(Boolean);
-            const bulletLines = [];
-            const proseLines = [];
-
-            lines.forEach(line => {
-                if (line.startsWith('-')) {
-                    bulletLines.push(line.replace(/^-+/, '').trim());
-                } else {
-                    proseLines.push(line);
-                }
-            });
-
-            proseLines.forEach(line => {
-                performanceHTML += `<p class="ai-summary-text">${escapeHtml(line)}</p>`;
-            });
-
-            if (bulletLines.length > 0) {
-                performanceHTML += `<ul class="ai-summary-list">${bulletLines.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`;
-            }
-        }
-
-        if (issues.length > 0) {
-            issues.forEach(issue => {
-                performanceHTML += `<p><i class="fas fa-exclamation-triangle"></i> ${escapeHtml(issue.message)}</p>`;
+        if (analysis.performance.issues && analysis.performance.issues.length > 0) {
+            analysis.performance.issues.forEach(issue => {
+                performanceHTML += `<p><i class="fas fa-exclamation-triangle"></i> ${issue.message}</p>`;
             });
         }
 
-        if (strengths.length > 0) {
-            strengths.forEach(strength => {
-                performanceHTML += `<p><i class="fas fa-check-circle"></i> ${escapeHtml(strength.message)}</p>`;
+        if (analysis.performance.strengths && analysis.performance.strengths.length > 0) {
+            analysis.performance.strengths.forEach(strength => {
+                performanceHTML += `<p><i class="fas fa-check-circle"></i> ${strength.message}</p>`;
             });
-        }
-
-        if (analysis.meta?.llmUsed) {
-            const modelName = analysis.meta.llmModel ? escapeHtml(analysis.meta.llmModel) : 'OpenRouter';
-            const message = analysis.meta?.summarySource === 'openrouter'
-                ? `AI summary generated with ${modelName}.`
-                : `AI-assisted insights generated with ${modelName}.`;
-            performanceHTML += `<p class="ai-meta">${escapeHtml(message)}</p>`;
-        }
-
-        if (analysis.meta?.llmError) {
-            performanceHTML += `<p class="ai-meta ai-meta-warning">${escapeHtml(analysis.meta.llmError)}</p>`;
         }
 
         elements.aiPerformance.innerHTML = performanceHTML;
 
         // Recommendations
         let recommendationsHTML = '';
-        if (Array.isArray(analysis.recommendations) && analysis.recommendations.length > 0) {
+        if (analysis.recommendations && analysis.recommendations.length > 0) {
             analysis.recommendations.forEach(rec => {
                 recommendationsHTML += `
                     <div class="ai-recommendation">
                         <h5>
                             <i class="fas fa-lightbulb"></i>
-                            ${escapeHtml(rec.title)}
+                            ${rec.title}
                         </h5>
                         <ul>
-                            ${Array.isArray(rec.steps) ? rec.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('') : ''}
+                            ${rec.steps.map(step => `<li>${step}</li>`).join('')}
                         </ul>
                     </div>`;
             });
@@ -410,44 +355,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Predictions
         let predictionsHTML = '';
-        if (analysis.prediction) {
-            const hasDownload = typeof analysis.prediction.downloadSpeed === 'number';
-            const hasUpload = typeof analysis.prediction.uploadSpeed === 'number';
-            const hasNotes = typeof analysis.prediction.notes === 'string' && analysis.prediction.notes.trim().length > 0;
-
-            if (hasDownload || hasUpload) {
-                const predictionLines = [];
-                if (hasDownload) {
-                    predictionLines.push(`<p>Predicted Download: ${(analysis.prediction.downloadSpeed / 1000000).toFixed(1)} Mbps</p>`);
-                }
-                if (hasUpload) {
-                    predictionLines.push(`<p>Predicted Upload: ${(analysis.prediction.uploadSpeed / 1000000).toFixed(1)} Mbps</p>`);
-                }
-
-                const confidenceValue = typeof analysis.prediction.confidence === 'string'
-                    ? analysis.prediction.confidence.toLowerCase()
-                    : '';
-                const allowedConfidence = ['low', 'medium', 'high'];
-                const confidenceClass = allowedConfidence.includes(confidenceValue) ? confidenceValue : 'medium';
-                if (confidenceValue) {
-                    const confidenceLabel = confidenceValue.charAt(0).toUpperCase() + confidenceValue.slice(1);
-                    predictionLines.push(`
-                        <span class="prediction-confidence confidence-${confidenceClass}">
-                            ${escapeHtml(confidenceLabel)} confidence
-                        </span>`);
-                }
-
-                if (hasNotes) {
-                    predictionLines.push(`<p class="prediction-note">${escapeHtml(analysis.prediction.notes)}</p>`);
-                }
-
-                predictionsHTML = predictionLines.join('\n');
-            } else if (hasNotes) {
-                predictionsHTML = `<p class="prediction-note">${escapeHtml(analysis.prediction.notes)}</p>`;
-            }
-        }
-
-        if (!predictionsHTML) {
+        if (analysis.prediction && analysis.prediction.downloadSpeed) {
+            predictionsHTML = `
+                <p>Predicted Download: ${(analysis.prediction.downloadSpeed / 1000000).toFixed(1)} Mbps</p>
+                <p>Predicted Upload: ${(analysis.prediction.uploadSpeed / 1000000).toFixed(1)} Mbps</p>
+                <span class="prediction-confidence confidence-${analysis.prediction.confidence}">
+                    ${analysis.prediction.confidence} confidence
+                </span>`;
+        } else {
             predictionsHTML = '<p>Not enough data for predictions</p>';
         }
         elements.aiPredictions.innerHTML = predictionsHTML;
@@ -486,11 +401,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 element: document.querySelector('.ai-insights'),
                 storageKey: 'aiInsightsCollapsed',
                 updateFn: updateAIInsightsContent
-            },
-            {
-                id: 'additional-tools-header',
-                element: document.querySelector('.additional-tools'),
-                storageKey: 'additionalToolsCollapsed'
             }
         ];
 
@@ -764,44 +674,15 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.settingsModal.style.display = 'none';
     });
 
-    elements.saveSettings.addEventListener('click', async () => {
+    elements.saveSettings.addEventListener('click', () => {
         const interval = elements.testInterval.value;
-        const apiKey = elements.openRouterApiKeyInput ? elements.openRouterApiKeyInput.value.trim() : '';
-        const llmModel = elements.llmModelInput ? elements.llmModelInput.value.trim() : '';
-
-        const storagePromises = [
-            chrome.storage.sync.set({ testInterval: interval })
-        ];
-
-        if (elements.openRouterApiKeyInput) {
-            if (apiKey) {
-                storagePromises.push(chrome.storage.local.set({ openRouterApiKey: apiKey }));
-            } else {
-                storagePromises.push(chrome.storage.local.remove('openRouterApiKey'));
-            }
-        }
-
-        // Save LLM model to both local and sync for compatibility
-        if (elements.llmModelInput) {
-            if (llmModel) {
-                storagePromises.push(chrome.storage.local.set({ llmModel }));
-                storagePromises.push(chrome.storage.sync.set({ llmModel }));
-            } else {
-                storagePromises.push(chrome.storage.local.remove('llmModel'));
-                storagePromises.push(chrome.storage.sync.remove('llmModel'));
-            }
-        }
-
-        try {
-            await Promise.all(storagePromises);
+        chrome.storage.sync.set({ testInterval: interval }, function () {
             chrome.alarms.clear('nextSpeedTest');
             if (interval !== '0') {
-                chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(interval, 10) });
+                chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(interval) });
             }
             elements.settingsModal.style.display = 'none';
-        } catch (error) {
-            console.error('Failed to save settings:', error);
-        }
+        });
     });
 
     window.addEventListener('click', (event) => {
@@ -1045,14 +926,11 @@ document.addEventListener('DOMContentLoaded', function () {
             aiAgentsLink.classList.add('clicked');
         }
 
-        // Only hide permanently if both links were clicked
-        // Ignore manual close - always show banner unless both links clicked
-        if (rateUsClicked && aiAgentsClicked) {
+        // Only hide permanently if both links were clicked OR user manually closed
+        if ((rateUsClicked && aiAgentsClicked) || bannerClosed) {
             promoBanner.classList.add('hidden');
         } else {
             promoBanner.classList.remove('hidden');
-            // Clear the manual close flag so banner shows again
-            localStorage.removeItem('promoBannerClosed');
         }
 
         // Update banner message if one link is clicked
@@ -1127,13 +1005,13 @@ document.addEventListener('DOMContentLoaded', function () {
             e.preventDefault();
             e.stopPropagation();
 
-            // Hide banner with animation (temporarily)
+            // Hide banner with animation
             promoBanner.style.opacity = '0';
             promoBanner.style.transform = 'translateY(-10px)';
 
             setTimeout(() => {
                 promoBanner.classList.add('hidden');
-                // Store temporary close preference (will be cleared on next popup open)
+                // Store manual close preference
                 localStorage.setItem('promoBannerClosed', 'true');
             }, 300);
         });
@@ -1213,54 +1091,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Get initial data
     function getInitialData() {
-        chrome.runtime.sendMessage({ type: 'getSpeed' }, function (response) {
-            if (response) {
-                const downloadSpeedMbps = (response.downloadSpeed || 0) / 1000000;
-                const uploadSpeedMbps = (response.uploadSpeed || 0) / 1000000;
 
-                updateSpeedometer('download', downloadSpeedMbps);
-                updateSpeedometer('upload', uploadSpeedMbps);
-                updateNetworkInfo(response.networkInfo || networkInfoCache);
 
-                elements.testStatus.textContent = response.timestamp ?
-                    'Last test: ' + new Date(response.timestamp).toLocaleTimeString() :
-                    'No test data available';
-            }
-        });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
-
-    // Add event listener for test button
-    elements.runTestBtn.addEventListener('click', handleSpeedTest);
-
-    // Initialize the popup
-    initialize();
-});
-
-// Initialize settings
-function initializeSettings(elements) {
-    chrome.storage.sync.get(['testInterval', 'llmModel'], function (result) {
-        elements.testInterval.value = result.testInterval || '30';
-        if (elements.llmModelInput) {
-            elements.llmModelInput.value = result.llmModel || 'kwaipilot/kat-coder-pro:free';
-        }
-        updateTimestamp(elements);
-    });
-
-    if (elements.openRouterApiKeyInput) {
-        chrome.storage.local.get(['openRouterApiKey'], function (result) {
-            if (result && typeof result.openRouterApiKey === 'string') {
-                elements.openRouterApiKeyInput.value = result.openRouterApiKey;
-            } else {
-                elements.openRouterApiKeyInput.value = '';
-            }
-        });
-    }
-}
-
-// Update timestamp
-function updateTimestamp(elements) {
-    if (elements.timestamp) {
-        const now = new Date();
+}        elements.timestamp.textContent = new Date().toLocaleString(); if (elements.timestamp) {
+    function updateTimestamp(elements) {// Update timestamp}    });        updateTimestamp(elements);        elements.testInterval.value = result.testInterval || '30';    chrome.storage.sync.get(['testInterval'], function (result) {function initializeSettings(elements) {// Initialize settings});    initialize();    // Initialize the popup    elements.runTestBtn.addEventListener('click', handleSpeedTest);    // Add event listener for test button    }        });            }                    'No test data available';                    'Last test: ' + new Date(response.timestamp).toLocaleTimeString() :                elements.testStatus.textContent = response.timestamp ?                updateNetworkInfo(response.networkInfo || networkInfoCache);                updateSpeedometer('upload', uploadSpeedMbps);                updateSpeedometer('download', downloadSpeedMbps);                const uploadSpeedMbps = (response.uploadSpeed || 0) / 1000000;                const downloadSpeedMbps = (response.downloadSpeed || 0) / 1000000;            if (response) {        chrome.runtime.sendMessage({ type: 'getSpeed' }, function (response) {        const now = new Date();
         elements.timestamp.textContent = now.toISOString().replace('T', ' ').substr(0, 19) + ' UTC';
     }
 }
