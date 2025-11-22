@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,102 +13,184 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
-            color: #e0e0e0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+            background: #0a0a0f;
+            color: #e8e8f0;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(66, 133, 244, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(52, 168, 83, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 20%, rgba(251, 188, 5, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px;
+            position: relative;
+            background: rgba(15, 15, 20, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 32px 24px;
             text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 10;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .logo-icon {
+            font-size: 36px;
+            filter: drop-shadow(0 0 20px rgba(66, 133, 244, 0.5));
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
 
         .header h1 {
-            color: #4285f4;
-            font-size: 28px;
-            margin-bottom: 10px;
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 50%, #fbbc05 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 8px;
         }
 
         .header p {
-            color: #ccc;
+            color: #a0a0b0;
             font-size: 16px;
+            font-weight: 400;
+        }
+
+        .tabs-container {
+            position: relative;
+            background: rgba(15, 15, 20, 0.6);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 10;
         }
 
         .tabs {
+            max-width: 1200px;
+            margin: 0 auto;
             display: flex;
-            background: rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 8px;
+            padding: 8px 24px;
         }
 
         .tab {
+            position: relative;
             flex: 1;
-            padding: 15px 20px;
+            padding: 16px 24px;
             text-align: center;
             cursor: pointer;
             background: transparent;
             border: none;
-            color: #aaa;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
+            color: #808090;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .tab::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(66, 133, 244, 0.1), rgba(52, 168, 83, 0.1));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tab:hover::before {
+            opacity: 1;
         }
 
         .tab.active {
-            color: #4285f4;
-            background: rgba(66, 133, 244, 0.1);
-            border-bottom-color: #4285f4;
+            color: #fff;
+            background: linear-gradient(135deg, rgba(66, 133, 244, 0.2), rgba(52, 168, 83, 0.15));
+            box-shadow: 0 4px 16px rgba(66, 133, 244, 0.2),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .tab:hover:not(.active) {
-            color: #ddd;
-            background: rgba(255, 255, 255, 0.05);
+            color: #c0c0d0;
+            transform: translateY(-2px);
         }
 
         .content {
+            position: relative;
             flex: 1;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 140px);
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px;
+            z-index: 1;
         }
 
         .tab-content {
             display: none;
             flex: 1;
-            position: relative;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .tab-content.active {
             display: flex;
             flex-direction: column;
-            height: 100%;
         }
 
         .iframe-container {
             flex: 1;
             position: relative;
-            background: #fff;
-            border-radius: 8px;
-            margin: 20px;
+            background: rgba(20, 20, 28, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            min-height: calc(100vh - 200px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            min-height: calc(100vh - 220px);
+            height: calc(100vh - 220px);
         }
 
         .iframe-container iframe {
             width: 100%;
             height: 100%;
-            min-height: calc(100vh - 200px);
+            min-height: calc(100vh - 220px);
             border: none;
-            border-radius: 8px;
-            transform: scale(1);
-            transform-origin: 0 0;
         }
 
         .loading {
@@ -117,200 +198,337 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            color: #666;
-            font-size: 18px;
+            text-align: center;
             z-index: 1;
         }
 
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(66, 133, 244, 0.1);
+            border-top-color: #4285f4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #808090;
+            font-size: 15px;
+        }
+
         .extension-info {
-            padding: 20px;
-            text-align: center;
-            background: rgba(255, 255, 255, 0.05);
-            margin: 20px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(20, 20, 28, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 48px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            max-width: 800px;
+            margin: 0 auto;
         }
 
         .extension-info h2 {
-            color: #4285f4;
-            margin-bottom: 15px;
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 32px;
+            margin-bottom: 24px;
+            font-weight: 700;
         }
 
         .extension-info p {
-            margin-bottom: 10px;
-            line-height: 1.6;
+            color: #c0c0d0;
+            margin-bottom: 24px;
+            line-height: 1.7;
+            font-size: 16px;
+        }
+
+        .features-list {
+            list-style: none;
+            margin: 32px 0;
+        }
+
+        .features-list li {
+            color: #d0d0e0;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            background: rgba(66, 133, 244, 0.05);
+            border-radius: 12px;
+            border-left: 3px solid #4285f4;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .features-list li:hover {
+            background: rgba(66, 133, 244, 0.1);
+            transform: translateX(8px);
         }
 
         .extension-link {
-            display: inline-block;
-            background: linear-gradient(to right, #4285f4, #34a853);
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #4285f4, #34a853);
             color: white;
             text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 24px;
-            font-weight: bold;
-            margin-top: 15px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(66, 133, 244, 0.4);
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 24px rgba(66, 133, 244, 0.3);
         }
 
         .extension-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.6);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(66, 133, 244, 0.4);
+        }
+
+        .extension-link:active {
+            transform: translateY(-1px);
         }
 
         .alternative-tests {
-            padding: 20px;
+            width: 100%;
+        }
+
+        .alternative-tests h2 {
+            text-align: center;
+            background: linear-gradient(135deg, #4285f4, #fbbc05);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 32px;
+            margin-bottom: 40px;
+            font-weight: 700;
         }
 
         .test-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
         }
 
         .test-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
+            background: rgba(20, 20, 28, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .test-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #4285f4, #34a853, #fbbc05);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .test-card:hover::before {
+            transform: scaleX(1);
         }
 
         .test-card:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateY(-2px);
+            background: rgba(20, 20, 28, 0.6);
+            transform: translateY(-8px);
+            box-shadow: 0 12px 40px rgba(66, 133, 244, 0.2);
+            border-color: rgba(66, 133, 244, 0.3);
         }
 
         .test-card h3 {
-            color: #4285f4;
-            margin-bottom: 10px;
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 22px;
+            margin-bottom: 16px;
+            font-weight: 700;
         }
 
         .test-card p {
-            color: #ccc;
-            margin-bottom: 15px;
-            line-height: 1.5;
+            color: #a0a0b0;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            font-size: 15px;
         }
 
         .test-card a {
             color: #4285f4;
             text-decoration: none;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
         }
 
         .test-card a:hover {
-            text-decoration: underline;
+            color: #5a9fff;
+            gap: 12px;
+        }
+
+        .footer-note {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 14px;
+            color: #606070;
+            font-style: italic;
         }
 
         @media (max-width: 768px) {
+            .header {
+                padding: 24px 16px;
+            }
+
             .header h1 {
-                font-size: 24px;
+                font-size: 32px;
+            }
+
+            .tabs {
+                padding: 8px 16px;
+                flex-direction: column;
             }
 
             .tab {
                 font-size: 14px;
-                padding: 12px 15px;
+                padding: 14px 20px;
+            }
+
+            .content {
+                padding: 16px;
             }
 
             .iframe-container {
-                margin: 10px;
-                min-height: calc(100vh - 180px);
+                min-height: calc(100vh - 260px);
+                height: calc(100vh - 260px);
             }
 
             .iframe-container iframe {
-                min-height: calc(100vh - 180px);
+                min-height: calc(100vh - 260px);
+            }
+
+            .extension-info {
+                padding: 32px 24px;
+            }
+
+            .test-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
-
 <body>
     <div class="header">
-        <h1>🚀 Speed Tester</h1>
-        <p>Test your internet speed with multiple reliable services</p>
+        <div class="header-content">
+            <!-- <div class="logo">
+                <span class="logo-icon">🚀</span>
+            </div> -->
+            <h1>Speed Tester</h1>
+            <p>Comprehensive internet speed testing with advanced analytics</p>
+        </div>
     </div>
 
-    <div class="tabs">
-        <button class="tab active" onclick="switchTab('fast')">Speed Tester</button>
-        <button class="tab" onclick="switchTab('extension')">Extension Info</button>
-        <button class="tab" onclick="switchTab('alternatives')">Other Utility Tests</button>
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('fast')">Speed Tester</button>
+            <button class="tab" onclick="switchTab('extension')">Extension Info</button>
+            <button class="tab" onclick="switchTab('alternatives')">Other Tests</button>
+        </div>
     </div>
 
     <div class="content">
-        <!-- Fast.com Tab -->
         <div id="fast" class="tab-content active">
             <div class="iframe-container">
-                <div class="loading">Loading Fast.com...</div>
-                <iframe src="https://speed.cloudflare.com/" onload="document.querySelector('.loading').style.display='none'"
-                    title="Fast.com Speed Test"
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Initializing speed test...</div>
+                </div>
+                <iframe src="https://speed.cloudflare.com/" 
+                    onload="document.querySelector('.loading').style.display='none'"
+                    title="Cloudflare Speed Test"
                     sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
                     loading="lazy">
                 </iframe>
             </div>
         </div>
 
-        <!-- Extension Info Tab -->
         <div id="extension" class="tab-content">
             <div class="extension-info">
                 <h2>📊 Speed Tester Chrome Extension</h2>
-                <p>Get detailed network analysis with our advanced Chrome extension featuring:</p>
-                <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
+                <p>Experience advanced network diagnostics with our feature-rich Chrome extension, designed for professionals and power users.</p>
+                
+                <ul class="features-list">
                     <li>✅ Real-time speed testing with visual speedometers</li>
                     <li>🤖 AI-powered network insights and recommendations</li>
-                    <li>📈 Speed history tracking and analysis</li>
+                    <li>📈 Speed history tracking and performance analysis</li>
                     <li>🔍 Detailed network information and diagnostics</li>
-                    <li>⚡ Load testing capabilities for sustained performance</li>
-                    <li>📱 Clean, modern interface with dark mode</li>
+                    <li>⚡ Load testing for sustained performance verification</li>
+                    <li>📱 Modern interface with dark mode support</li>
                 </ul>
+                
                 <a href="https://chromewebstore.google.com/detail/speed-tester/ikgbkmpmehkhjmhbfpoocemgkdhgjcln?utm_source=item-share-cb"
                     class="extension-link">
-                    Open Extension
+                    Open Extension <span>→</span>
                 </a>
-                <p style="margin-top: 15px; font-size: 14px; color: #888;">
-                    Click the extension icon in your Chrome toolbar or use the link above
+                
+                <p class="footer-note">
+                    Access the extension from your Chrome toolbar or use the direct link above
                 </p>
             </div>
         </div>
 
-        <!-- Alternative Tests Tab -->
         <div id="alternatives" class="tab-content">
             <div class="alternative-tests">
-                <h2 style="text-align: center; color: #4285f4; margin-bottom: 30px;">Alternative Speed Tests</h2>
+                <h2>Alternative Speed Tests</h2>
                 <div class="test-grid">
                     <div class="test-card">
                         <h3>Speedtest.net</h3>
-                        <p>One of the most popular and comprehensive speed testing services with detailed analytics.</p>
+                        <p>Industry-leading speed test with comprehensive analytics and global server network for accurate measurements.</p>
                         <a href="https://speedtest.net" target="_blank">Visit Speedtest.net →</a>
                     </div>
 
                     <div class="test-card">
                         <h3>Google Speed Test</h3>
-                        <p>Quick and simple speed test directly from Google search results.</p>
+                        <p>Quick and reliable speed test directly from Google search with instant results and simple interface.</p>
                         <a href="https://www.google.com/search?q=speed+test" target="_blank">Google Speed Test →</a>
                     </div>
 
                     <div class="test-card">
-                        <h3>Cloudflare Speed Test</h3>
-                        <p>Modern speed test focusing on real-world internet performance metrics.</p>
-                        <a href="https://speed.cloudflare.com" target="_blank">Cloudflare Test →</a>
+                        <h3>Fast Test</h3>
+                        <p>Modern speed test focusing on real-world performance metrics including latency, jitter, and packet loss.</p>
+                        <a href="https://fast.com" target="_blank">Fast Test →</a>
                     </div>
 
                     <div class="test-card">
                         <h3>TestMy.net</h3>
-                        <p>Independent speed test that doesn't use Flash or Java, focusing on accuracy.</p>
+                        <p>Independent HTML5 speed test that prioritizes accuracy without plugins or Flash requirements.</p>
                         <a href="https://testmy.net" target="_blank">TestMy.net →</a>
                     </div>
 
                     <div class="test-card">
                         <h3>OpenSpeedTest</h3>
-                        <p>Open-source HTML5 speed test with no plugins or apps required.</p>
+                        <p>Open-source HTML5 speed test with no additional software needed, fully browser-based testing.</p>
                         <a href="https://openspeedtest.com" target="_blank">OpenSpeedTest →</a>
                     </div>
 
                     <div class="test-card">
                         <h3>SpeedOf.Me</h3>
-                        <p>Browser-based speed test using real files for accurate measurements.</p>
+                        <p>Browser-based test using actual files for accurate measurements across different connection types.</p>
                         <a href="https://speedof.me" target="_blank">SpeedOf.Me →</a>
                     </div>
                 </div>
@@ -320,40 +538,55 @@
 
     <script>
         function switchTab(tabName) {
-            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
 
-            // Remove active class from all tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
 
-            // Show selected tab content
             document.getElementById(tabName).classList.add('active');
-
-            // Add active class to clicked tab
             event.target.classList.add('active');
         }
 
-        // Add some loading animation
+        function openTestInIframe(url, event) {
+            event.preventDefault();
+            
+            // Switch to the first tab (Speed Tester)
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById('fast').classList.add('active');
+            document.querySelectorAll('.tab')[0].classList.add('active');
+            
+            // Update iframe src
+            const iframe = document.querySelector('#fast iframe');
+            const loading = document.querySelector('.loading');
+            
+            loading.style.display = 'block';
+            iframe.src = url;
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             const iframe = document.querySelector('iframe');
             let dots = 0;
-            const loadingText = document.querySelector('.loading');
+            const loadingText = document.querySelector('.loading-text');
 
             const loadingInterval = setInterval(() => {
                 dots = (dots + 1) % 4;
-                loadingText.textContent = 'Loading Fast.com' + '.'.repeat(dots);
+                loadingText.textContent = 'Initializing speed test' + '.'.repeat(dots);
             }, 500);
 
             iframe.onload = () => {
                 clearInterval(loadingInterval);
-                loadingText.style.display = 'none';
+                document.querySelector('.loading').style.display = 'none';
             };
         });
     </script>
 </body>
-
 </html>
