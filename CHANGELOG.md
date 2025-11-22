@@ -1,3 +1,6 @@
+## [1.1.5] - 2025-11-22
+- Change iframe source from Fast.com to Cloudflare
+
 ## [1.1.4] - 2025-11-11
 - llm fix
 
