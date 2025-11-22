@@ -1,3 +1,6 @@
+## [1.1.6] - 2025-11-22
+- Remove commented logo from index.html Removed commented-out logo section from header.
+
 ## [1.1.5] - 2025-11-22
 - Change iframe source from Fast.com to Cloudflare
 
