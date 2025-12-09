@@ -1,0 +1,2 @@
+// Initialize login functionality
+initLogin();

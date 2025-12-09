@@ -1,0 +1,2 @@
+// Initialize signup functionality
+initSignup();

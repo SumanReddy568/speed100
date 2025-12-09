@@ -5,10 +5,20 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #1e1e1e;
     color: #e0e0e0;
+    opacity: 0;
+    /* Hidden by default for auth check */
+    transition: opacity 0.2s ease-in;
 }
 
 /* Base text styling for consistency */
-h3, h4, h5, p, span, div, label, button {
+h3,
+h4,
+h5,
+p,
+span,
+div,
+label,
+button {
     color: #e0e0e0;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -60,9 +70,6 @@ h4 {
 }
 
 .settings-icon {
-    position: absolute;
-    top: 0px;
-    right: 10px;
     font-size: 18px;
     color: #888;
     cursor: pointer;
@@ -72,6 +79,65 @@ h4 {
 
 .settings-icon:hover {
     color: #4285f4;
+}
+
+/* Header Controls */
+.header-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(66, 133, 244, 0.1);
+    border-radius: 20px;
+    border: 1px solid rgba(66, 133, 244, 0.2);
+    transition: all 0.3s ease;
+}
+
+.user-info:hover {
+    background: rgba(66, 133, 244, 0.15);
+    border-color: rgba(66, 133, 244, 0.3);
+}
+
+.user-email {
+    font-size: 12px;
+    color: #e0e0e0;
+    font-weight: 500;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: rgba(244, 67, 54, 0.1);
+    border-radius: 50%;
+    color: #f44336;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(244, 67, 54, 0.2);
+}
+
+.logout-link:hover {
+    background: rgba(244, 67, 54, 0.2);
+    border-color: rgba(244, 67, 54, 0.3);
+    transform: scale(1.1);
+}
+
+.logout-link i {
+    font-size: 14px;
 }
 
 .info-value:empty::before {
@@ -1178,9 +1244,17 @@ svg line {
 }
 
 @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
 }
 
 .additional-tools h3 {
@@ -1202,8 +1276,17 @@ svg line {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
 }
 
 .additional-tools .expand-icon {
@@ -1284,7 +1367,7 @@ svg line {
     padding: 8px 16px;
     margin: 8px 0;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .api-content {
@@ -1327,7 +1410,7 @@ svg line {
     border-radius: 8px;
     padding: 12px 10px 8px 10px;
     margin: 18px 0 10px 0;
-    box-shadow: 0 2px 8px rgba(66,133,244,0.08);
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.08);
     border: 1px solid #333;
 }
 

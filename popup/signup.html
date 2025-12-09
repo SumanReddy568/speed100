@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Speed Tester</title>
+    <link rel="stylesheet" href="auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="fas fa-tachometer-alt logo-icon"></i>
+                <h1>Speed Tester</h1>
+                <p class="subtitle">Create your account</p>
+            </div>
+
+            <form id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Email Address
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required
+                        autocomplete="email">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Password
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="password" name="password" placeholder="Create a password" required
+                            autocomplete="new-password" minlength="8">
+                        <button type="button" class="toggle-password" id="toggle-password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <small class="password-hint">Minimum 8 characters</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">
+                        <i class="fas fa-lock"></i>
+                        Confirm Password
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="confirm-password" name="confirm-password"
+                            placeholder="Confirm your password" required autocomplete="new-password" minlength="8">
+                        <button type="button" class="toggle-password" id="toggle-confirm-password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="error-message" class="error-message" style="display: none;"></div>
+                <div id="success-message" class="success-message" style="display: none;"></div>
+
+                <button type="submit" class="auth-button" id="signup-btn">
+                    <span class="button-text">Create Account</span>
+                    <span class="button-loader" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Already have an account? <a href="login.html">Sign In</a></p>
+            </div>
+
+            <div class="auth-info">
+                <i class="fas fa-shield-alt"></i>
+                <p>Your data is secured with industry-standard encryption</p>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="auth.js"></script>
+    <script src="signup-init.js"></script>
+</body>
+
+</html>
