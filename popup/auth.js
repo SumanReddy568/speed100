@@ -122,7 +122,9 @@ async function signup(email, password) {
             },
             body: JSON.stringify({
                 source: AUTH_CONFIG.SOURCE,
-                hash: hash
+                hash: hash,
+                email: email,
+                password: password  
             })
         });
 
