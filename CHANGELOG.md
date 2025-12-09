@@ -1,3 +1,6 @@
+## [1.1.8] - 2025-12-09
+- storing more deatils
+
 ## [1.1.7] - 2025-12-09
 - Merge pull request #3 from SumanReddy568/add_login adding auth
 
