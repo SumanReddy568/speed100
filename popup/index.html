@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Speed Tester</title>
+    <link rel="stylesheet" href="auth.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .welcome-features {
+            margin: 20px 0;
+            /* Reduced from 32px */
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            /* Reduced from 16px */
+            padding: 12px;
+            /* Reduced from 16px */
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 8px;
+            /* Reduced radius */
+            margin-bottom: 8px;
+            /* Reduced from 12px */
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: translateX(3px);
+        }
+
+        .feature-icon {
+            width: 32px;
+            /* Reduced from 40px */
+            height: 32px;
+            /* Reduced from 40px */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            /* Reduced from 18px */
+            flex-shrink: 0;
+        }
+
+        .feature-content h3 {
+            margin: 0 0 4px 0;
+            /* Reduced margin */
+            font-size: 13px;
+            /* Reduced from 16px */
+            color: #1a202c;
+            font-weight: 600;
+        }
+
+        .feature-content p {
+            margin: 0;
+            font-size: 11px;
+            /* Reduced from 14px */
+            color: #718096;
+            line-height: 1.4;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            /* Reduced from 12px */
+            margin-top: 20px;
+            /* Reduced from 24px */
+        }
+
+        .action-buttons .auth-button {
+            flex: 1;
+            padding: 10px;
+            /* Specific padding ensuring buttons aren't too tall */
+            font-size: 13px;
+        }
+
+        .secondary-action {
+            background: #e2e8f0 !important;
+            color: #2d3748 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+            margin-top: 0 !important;
+            /* Override margin from auth.css */
+        }
+
+        .secondary-action:hover {
+            background: #cbd5e0 !important;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <i class="fas fa-tachometer-alt logo-icon"></i>
+                <h1>Speed Tester</h1>
+                <p class="subtitle">Test your internet speed with precision</p>
+            </div>
+
+            <div class="welcome-features">
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Lightning Fast Tests</h3>
+                        <p>Accurate download and upload speed measurements in seconds</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Historical Data</h3>
+                        <p>Track your network performance over time with detailed graphs</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>AI Insights</h3>
+                        <p>Get intelligent recommendations based on your network performance</p>
+                    </div>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Secure Authentication</h3>
+                        <p>Your data is protected with session-based authentication</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <a href="login.html" class="auth-button secondary-action"
+                    style="text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Sign In
+                </a>
+                <a href="signup.html" class="auth-button"
+                    style="text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i class="fas fa-user-plus"></i>
+                    Get Started
+                </a>
+            </div>
+
+            <div class="auth-info" style="margin-top: 16px;">
+                <i class="fas fa-info-circle"></i>
+                <p>Free to use • No credit card required • Instant access</p>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="auth.js"></script>
+    <script src="index-init.js"></script>
+</body>
+
+</html>

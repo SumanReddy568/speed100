@@ -10,7 +10,15 @@
 
 <body>
     <div class="container">
-        <i class="fas fa-cog settings-icon" id="settings-icon"></i>
+        <div class="header-controls">
+            <i class="fas fa-cog settings-icon" id="settings-icon"></i>
+            <div class="user-info" id="user-info" style="display: none;">
+                <span class="user-email" id="user-email-display"></span>
+                <a href="logout.html" class="logout-link" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </div>
 
         <div class="speedometers-container">
             <!-- Download Speedometer -->
@@ -391,8 +399,10 @@
             <button id="save-settings" class="test-button">Save Settings</button>
         </div>
     </div>
+    <script src="auth.js"></script>
     <script src="../speed-test.js"></script>
     <script src="popup.js"></script>
+    <script src="popup-auth-check.js"></script>
 </body>
 
 </html>
