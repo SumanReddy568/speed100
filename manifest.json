@@ -1,7 +1,7 @@
 {
   "name": "Speed Tester",
   "short_name": "Speed Tester",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "Real-time speed test with AI: Network analysis, recommendations, and more.",
   "manifest_version": 3,
   "permissions": [

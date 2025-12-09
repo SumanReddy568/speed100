@@ -1,3 +1,6 @@
+## [1.1.7] - 2025-12-09
+- Merge pull request #3 from SumanReddy568/add_login adding auth
+
 ## [1.1.6] - 2025-11-22
 - Remove commented logo from index.html Removed commented-out logo section from header.
 
