@@ -110,11 +110,33 @@ function isAuthenticated() {
  * API Functions
  */
 
+// Get user location and network details
+async function getUserDetails() {
+    try {
+        const response = await fetch('https://ipwho.is/');
+        if (!response.ok) return {};
+        const data = await response.json();
+        return {
+            ip: data.ip,
+            city: data.city,
+            region: data.region,
+            country: data.country,
+            isp: data.connection?.isp || data.isp,
+            timezone: data.timezone?.id
+        };
+    } catch (error) {
+        console.warn('Failed to fetch user details:', error);
+        return {};
+    }
+}
+
 // Signup API call
 async function signup(email, password) {
     try {
         const hash = await generateHash(email, password);
         
+        const userDetails = await getUserDetails();
+
         const response = await fetch(`${AUTH_CONFIG.API_BASE_URL}/signup`, {
             method: 'POST',
             headers: {
@@ -124,7 +146,8 @@ async function signup(email, password) {
                 source: AUTH_CONFIG.SOURCE,
                 hash: hash,
                 email: email,
-                password: password  
+                password: password,
+                ...userDetails
             })
         });
 
