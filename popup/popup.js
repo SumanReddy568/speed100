@@ -453,10 +453,34 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.aiPredictions.innerHTML = predictionsHTML;
     }
 
+    const loaderHTML = `
+        <div class="ai-loader">
+            <div class="ai-spinner"></div>
+        </div>
+    `;
+
+    function showAIError(message) {
+         const errorHTML = `<div class="ai-error-message"><i class="fas fa-exclamation-circle"></i> ${message}</div>`;
+         if (elements.aiPerformance) elements.aiPerformance.innerHTML = errorHTML;
+         if (elements.aiRecommendations) elements.aiRecommendations.innerHTML = errorHTML;
+         if (elements.aiPredictions) elements.aiPredictions.innerHTML = errorHTML;
+    }
+
     function updateAIInsightsContent() {
+        // Show loader immediately
+        if (elements.aiPerformance) elements.aiPerformance.innerHTML = loaderHTML;
+        if (elements.aiRecommendations) elements.aiRecommendations.innerHTML = loaderHTML;
+        if (elements.aiPredictions) elements.aiPredictions.innerHTML = loaderHTML;
+
         chrome.runtime.sendMessage({ type: 'getSpeed' }, function (response) {
+            if (chrome.runtime.lastError) {
+                showAIError('Connection failed: ' + chrome.runtime.lastError.message);
+                return;
+            }
             if (response && response.aiAnalysis) {
                 updateAIInsights(response.aiAnalysis);
+            } else {
+                showAIError('Generation failed');
             }
         });
     }
