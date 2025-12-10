@@ -1,3 +1,6 @@
+## [1.1.9] - 2025-12-10
+- feat: Add loading spinner and error handling for AI insights in the popup UI.
+
 ## [1.1.8] - 2025-12-09
 - storing more deatils
 
