@@ -1,3 +1,6 @@
+## [1.2.0] - 2025-12-17
+- feat: Add initial popup UI with speedometers, test controls, history, AI insights, and network info sections.
+
 ## [1.1.9] - 2025-12-10
 - feat: Add loading spinner and error handling for AI insights in the popup UI.
 
