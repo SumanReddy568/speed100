@@ -467,6 +467,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateAIInsightsContent() {
+        // Track AI insights event
+        if (window.Analytics?.trackAIInsights) {
+            window.Analytics.trackAIInsights();
+        }
+
         // Show loader immediately
         if (elements.aiPerformance) elements.aiPerformance.innerHTML = loaderHTML;
         if (elements.aiRecommendations) elements.aiRecommendations.innerHTML = loaderHTML;
@@ -679,6 +684,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Event handlers
     function handleSpeedTest() {
+        // Track speed test event
+        if (window.Analytics?.trackSpeedTest) {
+            window.Analytics.trackSpeedTest();
+        }
+
         elements.testStatus.textContent = 'Starting test...';
         elements.runTestBtn.disabled = true;
         elements.runTestBtn.textContent = 'Testing...';
@@ -857,6 +867,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     elements.startLoadTest.addEventListener('click', async () => {
         if (isLoadTestRunning) return;
+
+        // Track load test event
+        if (window.Analytics?.trackLoadTest) {
+            window.Analytics.trackLoadTest();
+        }
 
         const fileSizeMB = parseInt(elements.loadSizeSelect.value, 10);
         const speedTest = new window.SpeedTest();
