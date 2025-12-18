@@ -1,3 +1,6 @@
+## [1.2.1] - 2025-12-18
+- feat: Integrate analytics tracking for AI insights, speed tests, and load tests in the popup UI
+
 ## [1.2.0] - 2025-12-17
 - feat: Add initial popup UI with speedometers, test controls, history, AI insights, and network info sections.
 
