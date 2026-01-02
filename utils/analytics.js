@@ -57,13 +57,58 @@ function trackAIInsights(meta = {}) {
     });
 }
 
+// Track section expansion
+function trackSectionExpand(sectionId, meta = {}) {
+    return track(`expand_${sectionId}`, {
+        feature: sectionId,
+        meta
+    });
+}
+
+// Track Rate Us click
+function trackRateUsClick(feature = "unknown", meta = {}) {
+    return track("click_rate_us", {
+        feature,
+        meta
+    });
+}
+
+// Track AI Agent Hub click
+function trackAIAgentHubClick(feature = "unknown", meta = {}) {
+    return track("click_ai_qa_agent_hub", {
+        feature,
+        meta
+    });
+}
+
+// Track Downdetector click
+function trackDowndetectorClick(meta = {}) {
+    return track("click_downdetector", {
+        feature: "outage_checker",
+        meta
+    });
+}
+
+// Track Multi Web Speed Test click
+function trackMultiWebSpeedTestClick(feature = "unknown", meta = {}) {
+    return track("click_multi_web_speed_test", {
+        feature,
+        meta
+    });
+}
+
 // Expose globally for non-module scripts (popup, etc.)
 if (typeof window !== 'undefined') {
     window.Analytics = {
         track,
         trackSpeedTest,
         trackLoadTest,
-        trackAIInsights
+        trackAIInsights,
+        trackSectionExpand,
+        trackRateUsClick,
+        trackAIAgentHubClick,
+        trackDowndetectorClick,
+        trackMultiWebSpeedTestClick
     };
 }
 
@@ -73,6 +118,11 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
         track,
         trackSpeedTest,
         trackLoadTest,
-        trackAIInsights
+        trackAIInsights,
+        trackSectionExpand,
+        trackRateUsClick,
+        trackAIAgentHubClick,
+        trackDowndetectorClick,
+        trackMultiWebSpeedTestClick
     };
 }

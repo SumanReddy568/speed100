@@ -232,12 +232,12 @@ class SpeedTest {
 
     async runLoadTest(fileSizeMB, progressCallback) {
         if (this.testRunning) return null;
-        
+
         this.testRunning = true;
         const startTime = performance.now();
         let bytesReceived = 0;
         const totalBytes = fileSizeMB * 1024 * 1024;
-        
+
         try {
             const controller = new AbortController();
             const response = await fetch(`${this.testFileUrl}${totalBytes}&t=${Date.now()}`, {
@@ -246,18 +246,18 @@ class SpeedTest {
             });
 
             if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
-            
+
             const reader = response.body.getReader();
             while (true) {
-                const {done, value} = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
-                
+
                 bytesReceived += value.length;
                 const progress = bytesReceived / totalBytes;
                 const currentTime = performance.now();
                 const elapsedSeconds = (currentTime - startTime) / 1000;
                 const speedMbps = (bytesReceived * 8) / (elapsedSeconds * 1000000);
-                
+
                 if (progressCallback) {
                     progressCallback({
                         progress,
@@ -403,6 +403,9 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         signalStrength: '-',
         connectionType: '-',
         latency: '-',
+        ping: '-',
+        jitter: '-',
+        packetLoss: '-',
         networkName: '-',
         location: {
             country: '-',
@@ -475,6 +478,9 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         const latencyResult = await this.testLatency();
         if (latencyResult.latency !== 'Unavailable') {
             networkInfo.latency = latencyResult.latency;
+            networkInfo.ping = latencyResult.ping;
+            networkInfo.jitter = latencyResult.jitter;
+            networkInfo.packetLoss = latencyResult.loss;
             networkInfo.serverInfo = latencyResult.serverInfo;
         }
 
@@ -556,39 +562,70 @@ SpeedTest.prototype.testLatency = async function () {
     let latencies = [];
     let bestServer = null;
     let bestLatency = Infinity;
+    let packetLossCount = 0;
+    const samplesPerEndpoint = 4; // 12 samples total
 
     for (const endpoint of testEndpoints) {
-        try {
-            const startTime = performance.now();
-            await fetch(endpoint.url, {
-                method: 'HEAD',
-                mode: 'no-cors',
-                cache: 'no-store'
-            });
-            const endTime = performance.now();
-            const latency = endTime - startTime;
-            latencies.push(latency);
+        for (let i = 0; i < samplesPerEndpoint; i++) {
+            try {
+                const startTime = performance.now();
+                // Use a short timeout for each probe
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 2000);
 
-            if (latency < bestLatency) {
-                bestLatency = latency;
-                bestServer = endpoint;
+                await fetch(endpoint.url, {
+                    method: 'HEAD',
+                    mode: 'no-cors',
+                    cache: 'no-store',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+                const endTime = performance.now();
+                const latency = endTime - startTime;
+
+                latencies.push(latency);
+
+                if (latency < bestLatency) {
+                    bestLatency = latency;
+                    bestServer = endpoint;
+                }
+            } catch (error) {
+                packetLossCount++;
             }
-        } catch (error) {
-            console.warn(`Latency test to ${endpoint.url} failed:`, error.message);
         }
     }
 
+    const totalAttempts = testEndpoints.length * samplesPerEndpoint;
+    const lossPercentage = (packetLossCount / totalAttempts) * 100;
+
     if (latencies.length > 0) {
-        const avgLatency = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+        // Ping: Minimum stable latency
+        const pingValue = Math.min(...latencies);
+
+        // Jitter: Mean variation between consecutive samples
+        let jitterSum = 0;
+        for (let i = 1; i < latencies.length; i++) {
+            jitterSum += Math.abs(latencies[i] - latencies[i - 1]);
+        }
+        const jitterValue = latencies.length > 1 ? jitterSum / (latencies.length - 1) : 0;
+
         return {
-            latency: `${avgLatency} ms`,
+            ping: Math.round(pingValue),
+            jitter: Math.round(jitterValue * 10) / 10,
+            loss: Math.round(lossPercentage * 10) / 10,
+            latency: `${Math.round(pingValue)} ms`,
             serverInfo: {
                 name: bestServer.name,
                 organization: bestServer.organization
             }
         };
     }
+
     return {
+        ping: 0,
+        jitter: 0,
+        loss: 100,
         latency: 'Unavailable',
         serverInfo: {
             name: 'Unavailable',

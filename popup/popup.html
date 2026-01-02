@@ -96,6 +96,40 @@
             </div>
         </div>
 
+        <!-- Metrics Panel -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">
+                    <i class="fas fa-microchip"></i>
+                    <span class="metric-label">Ping</span>
+                </div>
+                <div class="metric-value-container">
+                    <span id="ping-value" class="metric-value">-</span>
+                    <span class="metric-unit">ms</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <i class="fas fa-wave-square"></i>
+                    <span class="metric-label">Jitter</span>
+                </div>
+                <div class="metric-value-container">
+                    <span id="jitter-value" class="metric-value">-</span>
+                    <span class="metric-unit">ms</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="metric-label">Loss</span>
+                </div>
+                <div class="metric-value-container">
+                    <span id="loss-value" class="metric-value">-</span>
+                    <span class="metric-unit">%</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Add Load Test button next to main speed test button -->
         <div class="button-group">
             <button id="run-test-btn" class="test-button">Run Speed Test</button>
@@ -130,6 +164,7 @@
                 </a>
             </div>
         </div>
+
         <div class="info-grid">
             <!-- Speed History Graph -->
             <div class="speed-history-graph collapsed">
@@ -303,6 +338,25 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Outage Checker Section -->
+        <div class="outage-checker">
+            <div class="outage-header">
+                <h3><i class="fas fa-exclamation-triangle pulse-critical"></i> Having Internet Problems?</h3>
+            </div>
+            <div class="outage-content">
+                <!-- <p class="outage-subtitle">Popular services monitoring:</p> -->
+                <div class="service-status-list" id="service-status-list">
+                    <div class="service-status">
+                        <span class="service-name">Checking current outages...</span>
+                        <span class="status-badge status-orange">Scanning</span>
+                    </div>
+                </div>
+                <a href="https://downdetector.in/" target="_blank" class="downdetector-link">
+                    View all outages on <span class="dd-brand">Downdetector</span>
+                </a>
+            </div>
+        </div>
         </div>
 
         <!-- Load Test Modal -->

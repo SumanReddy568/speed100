@@ -25,7 +25,7 @@ function updateBadge(speedMbps) {
 
 // Function to send progress updates
 // In your service-worker.js
-function sendProgress(message, speeds) {
+function sendProgress(message, speeds, networkInfo = null) {
     // Check if online before proceeding
     if (!navigator.onLine) {
         chrome.runtime.sendMessage({
@@ -44,7 +44,8 @@ function sendProgress(message, speeds) {
         type: 'testProgress',
         message: message,
         downloadSpeed: speeds?.downloadSpeed || 0,
-        uploadSpeed: speeds?.uploadSpeed || 0
+        uploadSpeed: speeds?.uploadSpeed || 0,
+        networkInfo: networkInfo
     }).catch(() => {
         // Silent catch for when popup is closed
     });
@@ -70,11 +71,11 @@ async function runSpeedTest() {
         sendProgress('Gathering network info...', { downloadSpeed: 0, uploadSpeed: 0 });
         const networkInfo = await speedTest.getNetworkInfo();
 
-        sendProgress('Starting download test...', { downloadSpeed: 0, uploadSpeed: 0 });
+        sendProgress('Starting download test...', { downloadSpeed: 0, uploadSpeed: 0 }, networkInfo);
         await speedTest.testDownloadSpeed();
 
-        sendProgress('Starting upload test...', 
-            { downloadSpeed: speedTest.downloadSpeed, uploadSpeed: 0 });
+        sendProgress('Starting upload test...',
+            { downloadSpeed: speedTest.downloadSpeed, uploadSpeed: 0 }, networkInfo);
         await speedTest.testUploadSpeed();
 
         lastTestResult = {
@@ -115,8 +116,8 @@ async function runSpeedTest() {
             uploadSpeed: speedTest.uploadSpeed,
             timestamp: Date.now()
         };
-        
-        chrome.storage.local.get(['speedTestHistory'], function(result) {
+
+        chrome.storage.local.get(['speedTestHistory'], function (result) {
             const history = result.speedTestHistory || [];
             history.unshift(historyItem);
             // Keep only last 10 items in storage (we'll display last 3)
@@ -129,7 +130,7 @@ async function runSpeedTest() {
         console.error('Speed test failed:', error);
         sendProgress('Test failed: ' + error.message,
             { downloadSpeed: speedTest.downloadSpeed, uploadSpeed: speedTest.uploadSpeed });
-        
+
         // Send error with whatever info we have
         chrome.runtime.sendMessage({
             type: 'speedUpdate',
@@ -140,8 +141,8 @@ async function runSpeedTest() {
                 error: error.message
             },
             timestamp: Date.now()
-        }).catch(() => {});
-        
+        }).catch(() => { });
+
         return null;
     }
 }
@@ -168,7 +169,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 // Update message handler to send AI analysis
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getSpeed') {
-        chrome.storage.local.get(['speedTestHistory'], function(result) {
+        chrome.storage.local.get(['speedTestHistory'], function (result) {
             sendResponse({
                 ...lastTestResult,
                 history: result.speedTestHistory || [],

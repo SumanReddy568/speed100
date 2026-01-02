@@ -69,7 +69,13 @@ document.addEventListener('DOMContentLoaded', function () {
         aiRecommendations: document.getElementById('ai-recommendations'),
         aiPredictions: document.getElementById('ai-predictions'),
         aiInsightsHeader: document.getElementById('ai-insights-header'),
-        aiInsights: document.querySelector('.ai-insights')
+        aiInsights: document.querySelector('.ai-insights'),
+
+        // metric elements
+        pingValue: document.getElementById('ping-value'),
+        jitterValue: document.getElementById('jitter-value'),
+        lossValue: document.getElementById('loss-value'),
+        serviceStatusList: document.getElementById('service-status-list')
     };
 
     // Speedometer configuration
@@ -95,6 +101,9 @@ document.addEventListener('DOMContentLoaded', function () {
         connectionType: '-',
         networkName: '-',
         latency: '-',
+        ping: '-',
+        jitter: '-',
+        packetLoss: '-',
         isp: '-',
         location: {
             country: '-',
@@ -118,7 +127,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'connection-type', 'network-name', 'latency', 'isp',
             'location-country', 'location-city', 'location-region',
             'location-timezone', 'server-name', 'server-organization',
-            'detection-status'
+            'detection-status', 'ping-value', 'jitter-value', 'loss-value'
         ];
 
         networkInfoIds.forEach(id => {
@@ -460,10 +469,10 @@ document.addEventListener('DOMContentLoaded', function () {
     `;
 
     function showAIError(message) {
-         const errorHTML = `<div class="ai-error-message"><i class="fas fa-exclamation-circle"></i> ${message}</div>`;
-         if (elements.aiPerformance) elements.aiPerformance.innerHTML = errorHTML;
-         if (elements.aiRecommendations) elements.aiRecommendations.innerHTML = errorHTML;
-         if (elements.aiPredictions) elements.aiPredictions.innerHTML = errorHTML;
+        const errorHTML = `<div class="ai-error-message"><i class="fas fa-exclamation-circle"></i> ${message}</div>`;
+        if (elements.aiPerformance) elements.aiPerformance.innerHTML = errorHTML;
+        if (elements.aiRecommendations) elements.aiRecommendations.innerHTML = errorHTML;
+        if (elements.aiPredictions) elements.aiPredictions.innerHTML = errorHTML;
     }
 
     function updateAIInsightsContent() {
@@ -484,8 +493,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (response && response.aiAnalysis) {
                 updateAIInsights(response.aiAnalysis);
+            } else if (response && (!response.timestamp || response.downloadSpeed === 0)) {
+                showAIError('Please run a speed test first to see AI insights');
             } else {
-                showAIError('Generation failed');
+                showAIError('AI analysis is not available for this test result');
             }
         });
     }
@@ -527,14 +538,22 @@ document.addEventListener('DOMContentLoaded', function () {
             const header = document.getElementById(section.id);
             if (header && section.element) {
                 header.addEventListener('click', () => {
-                    section.element.classList.toggle('collapsed');
+                    const isNowCollapsed = section.element.classList.toggle('collapsed');
 
-                    if (!section.element.classList.contains('collapsed') && section.updateFn) {
+                    // Track expansion events
+                    if (!isNowCollapsed) {
+                        const sectionName = section.storageKey.replace('Collapsed', '').replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+                        if (window.Analytics?.trackSectionExpand) {
+                            window.Analytics.trackSectionExpand(sectionName);
+                        }
+                    }
+
+                    if (!isNowCollapsed && section.updateFn) {
                         setTimeout(section.updateFn, 300);
                     }
 
                     chrome.storage.local.set({
-                        [section.storageKey]: section.element.classList.contains('collapsed')
+                        [section.storageKey]: isNowCollapsed
                     });
                 });
             }
@@ -560,6 +579,9 @@ document.addEventListener('DOMContentLoaded', function () {
             connectionType: '-',
             networkName: '-',
             latency: '-',
+            ping: '-',
+            jitter: '-',
+            packetLoss: '-',
             isp: '-',
             location: {
                 country: '-',
@@ -584,6 +606,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 ...info,
                 networkName: info.networkName || networkInfoCache.networkName || '-',
                 localAddress: info.localAddress || networkInfoCache.localAddress || '-',
+                ping: (info.ping !== undefined && info.ping !== null) ? info.ping : (info.latency ? info.latency.replace(' ms', '') : '-'),
+                jitter: (info.jitter !== undefined && info.jitter !== null) ? info.jitter : '-',
+                packetLoss: (info.packetLoss !== undefined && info.packetLoss !== null) ? info.packetLoss : '-',
                 lastUpdate: Date.now()
             };
         }
@@ -599,6 +624,11 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.networkName.textContent = info.networkName || '-';
         elements.latency.textContent = info.latency || '-';
         elements.isp.textContent = info.isp || '-';
+
+        // Update new metrics grid
+        if (elements.pingValue) elements.pingValue.textContent = (info.ping !== undefined && info.ping !== null && info.ping !== '-') ? info.ping : '-';
+        if (elements.jitterValue) elements.jitterValue.textContent = (info.jitter !== undefined && info.jitter !== null && info.jitter !== '-') ? info.jitter : '-';
+        if (elements.lossValue) elements.lossValue.textContent = (info.packetLoss !== undefined && info.packetLoss !== null && info.packetLoss !== '-') ? info.packetLoss : '-';
 
         // Update location information
         if (info.location) {
@@ -723,7 +753,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 name: 'Testing...',
                 organization: 'Testing...'
             },
-            status: 'testing'
+            status: 'testing',
+            ping: '...',
+            jitter: '...',
+            packetLoss: '...'
         });
 
         chrome.runtime.sendMessage({ type: 'runTest' }, function (response) {
@@ -780,6 +813,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             updateSpeedometer('download', downloadSpeedMbps);
             updateSpeedometer('upload', uploadSpeedMbps);
+
+            if (request.networkInfo) {
+                updateNetworkInfo(request.networkInfo);
+            }
 
             elements.testStatus.textContent = request.message || 'Testing...';
         }
@@ -934,136 +971,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Function to check if it's time to show the review prompt
-    function checkReviewPrompt() {
-        chrome.storage.local.get(['runsCount', 'reviewPromptShown'], function (data) {
-            let runsCount = data.runsCount || 0;
-            const reviewPromptShown = data.reviewPromptShown || false;
-
-            runsCount++;
-            chrome.storage.local.set({ 'runsCount': runsCount });
-
-            if (runsCount >= 2 && !reviewPromptShown) {
-                showReviewBanner();
-            }
-        });
-    }
-
-    // Function to show the review banner
-    function showReviewBanner() {
-        const banner = document.createElement('div');
-        banner.id = 'review-banner';
-        banner.style.cssText = `
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: linear-gradient(135deg, #283593, #1a237e);
-            color: white;
-            padding: 16px 20px;
-            text-align: center;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
-            font-size: 14px;
-            transition: all 0.3s ease;
-            position: relative;
-        `;
-
-        const contentWrapper = document.createElement('div');
-        contentWrapper.style.cssText = `
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            justify-content: center;
-            width: 100%;
-            padding-right: 40px;
-        `;
-
-        const message = document.createElement('span');
-        message.textContent = '❤️ Enjoying Speed Tester?';
-        message.style.fontWeight = '500';
-        contentWrapper.appendChild(message);
-
-        const reviewButton = document.createElement('a');
-        reviewButton.href = 'https://chromewebstore.google.com/detail/speed-tester/ikgbkmpmehkhjmhbfpoocemgkdhgjcln/reviews?hl=en&authuser=0';
-        reviewButton.textContent = 'Rate Us ★★★★★';
-        reviewButton.style.cssText = `
-            background: rgba(255, 255, 255, 0.2);
-            color: #fff;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 8px 16px;
-            border-radius: 20px;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            margin-right: 16px;
-        `;
-        reviewButton.addEventListener('mouseover', () => {
-            reviewButton.style.background = 'rgba(255, 255, 255, 0.3)';
-        });
-        reviewButton.addEventListener('mouseout', () => {
-            reviewButton.style.background = 'rgba(255, 255, 255, 0.2)';
-        });
-        reviewButton.target = '_blank';
-        contentWrapper.appendChild(reviewButton);
-        banner.appendChild(contentWrapper);
-
-        const closeButton = document.createElement('div');
-        closeButton.innerHTML = '✕';
-        closeButton.style.cssText = `
-            position: absolute;
-            top: 50%;
-            right: 30px;
-            transform: translateY(-50%);
-            width: 24px;
-            height: 24px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.9);
-            transition: all 0.2s ease;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            z-index: 3;
-            line-height: 1;
-            padding-bottom: 2px;
-        `;
-
-        closeButton.addEventListener('mouseover', () => {
-            closeButton.style.background = 'rgba(255, 255, 255, 0.25)';
-            closeButton.style.transform = 'translateY(-50%) scale(1.1)';
-        });
-
-        closeButton.addEventListener('mouseout', () => {
-            closeButton.style.background = 'rgba(255, 255, 255, 0.15)';
-            closeButton.style.transform = 'translateY(-50%) scale(1)';
-        });
-
-        closeButton.onclick = function () {
-            banner.style.opacity = '0';
-            banner.style.transform = 'translateY(100%)';
-            setTimeout(() => {
-                banner.remove();
-            }, 300);
-            chrome.storage.local.set({ 'reviewPromptShown': true });
-        };
-        banner.appendChild(closeButton);
-
-        document.body.appendChild(banner);
-        // Trigger animation
-        setTimeout(() => {
-            banner.style.transform = 'translateY(0)';
-            banner.style.opacity = '1';
-        }, 100);
-    }
-
     // Promotional Banner Management
     const promoBanner = document.getElementById('promotional-banner');
     const promoClose = document.getElementById('promo-close');
@@ -1116,6 +1023,11 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem('promoRateUsClicked', 'true');
             rateUsLink.classList.add('clicked');
 
+            // Track rate us event
+            if (window.Analytics?.trackRateUsClick) {
+                window.Analytics.trackRateUsClick('promo_banner');
+            }
+
             // Update banner message
             const aiAgentsClicked = localStorage.getItem('promoAiAgentsClicked') === 'true';
             const bannerTitle = promoBanner.querySelector('h4');
@@ -1140,6 +1052,11 @@ document.addEventListener('DOMContentLoaded', function () {
         aiAgentsLink.addEventListener('click', function (e) {
             localStorage.setItem('promoAiAgentsClicked', 'true');
             aiAgentsLink.classList.add('clicked');
+
+            // Track AI Agent Hub event
+            if (window.Analytics?.trackAIAgentHubClick) {
+                window.Analytics.trackAIAgentHubClick('promo_banner');
+            }
 
             // Update banner message
             const rateUsClicked = localStorage.getItem('promoRateUsClicked') === 'true';
@@ -1189,6 +1106,7 @@ document.addEventListener('DOMContentLoaded', function () {
         initializeCollapsibleSections();
         initializeGraphObserver();
         initializeNetworkInfoState();
+        checkOutages();
 
         // Load test histories
         chrome.storage.local.get(['speedTestHistory', 'loadTestHistory'], function (result) {
@@ -1202,8 +1120,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Check review prompt
-        checkReviewPrompt();
+        // Add tracking for Additional Tools links
+        const toolsLinks = document.querySelectorAll('.additional-tools .tool-link');
+        toolsLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const text = link.textContent.trim().toLowerCase();
+                const isAI = text.includes('ai');
+                if (isAI) {
+                    if (window.Analytics?.trackAIAgentHubClick) {
+                        window.Analytics.trackAIAgentHubClick('additional_tools');
+                    }
+                } else {
+                    if (window.Analytics?.trackMultiWebSpeedTestClick) {
+                        window.Analytics.trackMultiWebSpeedTestClick('additional_tools');
+                    }
+                }
+            });
+        });
     }
 
     // Initialize network info collapsed state
@@ -1270,6 +1203,38 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Add event listener for test button
     elements.runTestBtn.addEventListener('click', handleSpeedTest);
+
+    // Real-time Service Status Checking
+    function checkOutages() {
+        if (!elements.serviceStatusList) return;
+
+        elements.serviceStatusList.innerHTML = `
+            <div style="padding: 5px 0; text-align: center;">
+                <p style="font-size: 11px; color: #888; margin-bottom: 12px; margin-top: 0;">Detect and track service outages in real-time</p>
+                <a href="https://downdetector.in/" target="_blank" class="status-badge" 
+                   style="background: rgba(66, 133, 244, 0.1); color: #4285f4; border: 1px solid rgba(66, 133, 244, 0.2); text-decoration: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 14px; border-radius: 12px; transition: all 0.3s ease; width: 100%; justify-content: center; box-sizing: border-box; font-weight: 500;">
+                   <i class="fas fa-search-location"></i> Check On Downdetector
+                </a>
+            </div>
+        `;
+
+        const link = elements.serviceStatusList.querySelector('.status-badge');
+        if (link) {
+            link.addEventListener('click', () => {
+                if (window.Analytics?.trackDowndetectorClick) {
+                    window.Analytics.trackDowndetectorClick();
+                }
+            });
+            link.addEventListener('mouseenter', () => {
+                link.style.background = 'rgba(66, 133, 244, 0.2)';
+                link.style.transform = 'translateY(-1px)';
+            });
+            link.addEventListener('mouseleave', () => {
+                link.style.background = 'rgba(66, 133, 244, 0.1)';
+                link.style.transform = 'translateY(0)';
+            });
+        }
+    }
 
     // Initialize the popup
     initialize();
