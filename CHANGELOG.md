@@ -1,4 +1,7 @@
 ## [1.2.4] - 2026-01-04
+- feat: Add AI Powered Resume Builder link and update extension version.
+
+## [1.2.4] - 2026-01-04
 - refactor: Centralize user information retrieval for analytics and remove redundant user ID handling from AI analysis and authentication.
 
 ## [1.2.3] - 2026-01-04
