@@ -11,6 +11,23 @@ async function track(eventName, options = {}) {
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         } : { ua: 'service-worker' };
 
+        // Get user info from storage
+        let userInfo = {};
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            try {
+                const storageData = await new Promise((resolve) => {
+                    chrome.storage.local.get(['user_id', 'user_email', 'user_hash'], resolve);
+                });
+                userInfo = {
+                    userId: storageData.user_id || null,
+                    email: storageData.user_email || null,
+                    userHash: storageData.user_hash || null
+                };
+            } catch (e) {
+                console.warn('Failed to fetch user info for analytics:', e);
+            }
+        }
+
         const response = await fetch(TRACK_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -21,6 +38,7 @@ async function track(eventName, options = {}) {
                 page: options.page || (typeof window !== 'undefined' ? window.location.href : 'background'),
                 feature: options.feature || null,
                 version: chrome?.runtime?.getManifest?.()?.version || '1.0.0',
+                ...userInfo,
                 metadata: {
                     system: systemInfo,
                     ...options.meta
