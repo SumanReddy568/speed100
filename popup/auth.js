@@ -10,7 +10,8 @@ const AUTH_CONFIG = {
     STORAGE_KEYS: {
         TOKEN: 'auth_token',
         USER_EMAIL: 'user_email',
-        USER_HASH: 'user_hash'
+        USER_HASH: 'user_hash',
+        USER_ID: 'user_id'
     }
 };
 
@@ -73,10 +74,21 @@ function setButtonLoading(buttonId, isLoading) {
 }
 
 // Store authentication data
-function storeAuthData(token, email, hash) {
+function storeAuthData(token, email, hash, userId) {
     localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.TOKEN, token);
     localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL, email);
     localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_HASH, hash);
+    if (userId) {
+        localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_ID, userId);
+        
+        // Also save to chrome.storage.local for background script access
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({
+                [AUTH_CONFIG.STORAGE_KEYS.USER_ID]: userId,
+                [AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL]: email
+            });
+        }
+    }
 }
 
 // Clear authentication data
@@ -84,6 +96,15 @@ function clearAuthData() {
     localStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.TOKEN);
     localStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL);
     localStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.USER_HASH);
+    localStorage.removeItem(AUTH_CONFIG.STORAGE_KEYS.USER_ID);
+
+    // Also remove from chrome.storage.local
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.remove([
+            AUTH_CONFIG.STORAGE_KEYS.USER_ID, 
+            AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL
+        ]);
+    }
 }
 
 // Get stored token
@@ -99,6 +120,11 @@ function getStoredEmail() {
 // Get stored hash
 function getStoredHash() {
     return localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.USER_HASH);
+}
+
+// Get stored user ID
+function getStoredUserId() {
+    return localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.USER_ID);
 }
 
 // Check if user is authenticated
@@ -170,7 +196,7 @@ async function signup(email, password) {
             throw new Error(data.error || 'Signup failed. Please try again.');
         }
 
-        return { success: true, hash, email };
+        return { success: true, hash, email, userId: data.userId };
     } catch (error) {
         console.error('Signup error:', error);
         throw error;
@@ -212,7 +238,7 @@ async function login(email, password) {
             throw new Error(data.error || 'Login failed. Please try again.');
         }
 
-        return { success: true, token: data.token, hash, email };
+        return { success: true, token: data.token, hash, email, userId: data.userId };
     } catch (error) {
         console.error('Login error:', error);
         throw error;
@@ -281,7 +307,7 @@ async function validateSession() {
         }
 
         const data = await response.json();
-        return { valid: data.valid };
+        return { valid: data.valid, userId: data.userId, email: data.email };
     } catch (error) {
         console.error('Session validation error:', error);
         return { valid: false };
@@ -366,7 +392,7 @@ function initSignup() {
                         try {
                             const loginResult = await login(email, password);
                             if (loginResult.success) {
-                                storeAuthData(loginResult.token, loginResult.email, loginResult.hash);
+                                storeAuthData(loginResult.token, loginResult.email, loginResult.hash, loginResult.userId);
                                 showSuccess('Login successful! Redirecting...');
                                 setTimeout(() => {
                                     window.location.href = 'popup.html';
@@ -427,7 +453,7 @@ function initLogin() {
                 const result = await login(email, password);
                 
                 if (result.success) {
-                    storeAuthData(result.token, result.email, result.hash);
+                    storeAuthData(result.token, result.email, result.hash, result.userId);
                     showSuccess('Login successful! Redirecting...');
                     setTimeout(() => {
                         window.location.href = 'popup.html';
@@ -499,6 +525,7 @@ function requireAuth() {
 }
 
 // Validate session and redirect if invalid
+// Validate session and redirect if invalid
 async function checkSession() {
     const result = await validateSession();
     if (!result.valid) {
@@ -506,6 +533,18 @@ async function checkSession() {
         window.location.href = 'login.html';
         return false;
     }
+
+    // Ensure we have the latest user info stored (especially for background script sync)
+    if (result.userId) {
+        const token = getStoredToken();
+        const email = getStoredEmail() || result.email; // Use stored or returned email
+        const hash = getStoredHash();
+        
+        if (token && email && hash) {
+            storeAuthData(token, email, hash, result.userId);
+        }
+    }
+
     return true;
 }
 
@@ -516,6 +555,7 @@ window.AuthModule = {
     checkSession,
     getStoredEmail,
     getStoredToken,
+    getStoredUserId,
     logout: async () => {
         try {
             await logout();

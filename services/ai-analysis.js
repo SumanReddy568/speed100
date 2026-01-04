@@ -73,6 +73,9 @@ class NetworkAIAnalysis {
             anomalies
         });
 
+        // Get user info from storage
+        const userInfo = await this.getUserInfo();
+
         const analysis = {
             performance,
             recommendations,
@@ -85,6 +88,8 @@ class NetworkAIAnalysis {
                 llmModel: null,
                 llmError: null,
                 generatedAt: new Date().toISOString(),
+                userId: userInfo.userId,
+                email: userInfo.email,
                 aiOverrides: {
                     summary: false,
                     recommendations: false,
@@ -163,6 +168,28 @@ class NetworkAIAnalysis {
         this.updateHistoricalData(result); // Update historical data
         this.updatePatterns(result);
         return analysis;
+    }
+
+    async getUserInfo() {
+        if (typeof chrome === 'undefined' ||
+            !chrome.storage ||
+            !chrome.storage.local ||
+            typeof chrome.storage.local.get !== 'function') {
+            return { userId: null, email: null };
+        }
+
+        try {
+            const result = await new Promise((resolve) => {
+                chrome.storage.local.get(['user_id', 'user_email'], resolve);
+            });
+            return {
+                userId: result.user_id || null,
+                email: result.user_email || null
+            };
+        } catch (error) {
+            console.warn('User info lookup failed:', error);
+            return { userId: null, email: null };
+        }
     }
 
     analyzePerformance(result) {
