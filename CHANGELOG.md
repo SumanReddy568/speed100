@@ -1,3 +1,6 @@
+## [1.2.3] - 2026-01-04
+- feat: Enhance authentication to store and retrieve user ID, include user ID and email in AI analysis reports, and add a new AI tool link.
+
 ## [1.2.2] - 2026-01-02
 - feat: implement new popup UI for speed and load testing with metrics, history, and analytics.
 
