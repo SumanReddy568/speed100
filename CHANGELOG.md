@@ -1,3 +1,6 @@
+## [1.2.4] - 2026-01-04
+- refactor: Centralize user information retrieval for analytics and remove redundant user ID handling from AI analysis and authentication.
+
 ## [1.2.3] - 2026-01-04
 - feat: Enhance authentication to store and retrieve user ID, include user ID and email in AI analysis reports, and add a new AI tool link.
 
