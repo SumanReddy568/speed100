@@ -1,4 +1,6 @@
-const TRACK_URL = "https://multi-product-analytics.sumanreddy568.workers.dev/";
+var TRACK_URL = "https://multi-product-analytics.sumanreddy568.workers.dev/";
+var LOGPUSH_URL = TRACK_URL + "api/logpush";
+
 
 async function track(eventName, options = {}) {
     try {
@@ -50,6 +52,63 @@ async function track(eventName, options = {}) {
         console.error("Analytics failed", err);
     }
 }
+
+async function pushLog(logType, message, extraData = null) {
+    try {
+        const systemInfo = typeof window !== 'undefined' ? {
+            ua: navigator.userAgent,
+            platform: navigator.platform,
+            url: window.location.href
+        } : { ua: 'service-worker' };
+
+        // Get user info from storage
+        let userInfo = {};
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            try {
+                const storageData = await new Promise((resolve) => {
+                    chrome.storage.local.get(['user_id', 'user_email'], resolve);
+                });
+                userInfo = {
+                    userId: storageData.user_id || 'unknown',
+                    email: storageData.user_email || 'unknown'
+                };
+            } catch (e) {
+                console.warn('Failed to fetch user info for logging:', e);
+            }
+        }
+
+        const payload = {
+            product: "speed_tester",
+            log_type: logType,
+            user_id: userInfo.userId,
+            user_email: userInfo.email,
+            message: message,
+            extra_data: typeof extraData === 'object' ? JSON.stringify({ ...extraData, system: systemInfo }) : extraData,
+            timestamp: new Date().toISOString()
+        };
+
+        const response = await fetch(LOGPUSH_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Logpush failed with status ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (err) {
+        // Fallback to console if remote logging fails to avoid infinite loops or blocking
+        console.warn(`Remote logging failed [${logType}]:`, message, err);
+    }
+}
+
+var logger = {
+    info: (msg, data) => pushLog('info', msg, data),
+    error: (msg, data) => pushLog('error', msg, data),
+    debug: (msg, data) => pushLog('debug', msg, data)
+};
 
 // Track speed test event
 function trackSpeedTest(meta = {}) {
@@ -126,8 +185,10 @@ if (typeof window !== 'undefined') {
         trackRateUsClick,
         trackAIAgentHubClick,
         trackDowndetectorClick,
-        trackMultiWebSpeedTestClick
+        trackMultiWebSpeedTestClick,
+        logger
     };
+    window.logger = logger;
 }
 
 // Expose for service worker context
@@ -141,6 +202,8 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
         trackRateUsClick,
         trackAIAgentHubClick,
         trackDowndetectorClick,
-        trackMultiWebSpeedTestClick
+        trackMultiWebSpeedTestClick,
+        logger
     };
+    self.logger = logger;
 }

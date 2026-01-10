@@ -15,7 +15,8 @@
     "https://ipinfo.io/*",
     "https://ipwho.is/*",
     "https://openrouter.ai/*",
-    "https://auth-worker.sumanreddy568.workers.dev/*"
+    "https://auth-worker.sumanreddy568.workers.dev/*",
+    "https://multi-product-analytics.sumanreddy568.workers.dev/*"
   ],
   "background": {
     "service_worker": "background.js"

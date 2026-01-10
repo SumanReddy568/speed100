@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
+    logger.info('Popup opened');
+
     // Elements object with all DOM references
     const elements = {
         // Speed test elements
@@ -723,6 +725,9 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.runTestBtn.disabled = true;
         elements.runTestBtn.textContent = 'Testing...';
 
+        logger.info('User initiated speed test');
+
+
         // Get current network name before starting test
         if (navigator.connection) {
             const networkInfo = {
@@ -865,6 +870,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             await Promise.all(storagePromises);
+            logger.info('Settings saved', { interval, hasApiKey: !!apiKey, llmModel });
             chrome.alarms.clear('nextSpeedTest');
             if (interval !== '0') {
                 chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(interval, 10) });
@@ -904,6 +910,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     elements.startLoadTest.addEventListener('click', async () => {
         if (isLoadTestRunning) return;
+
+        logger.info('Starting load test', { size: elements.loadSizeSelect.value });
 
         // Track load test event
         if (window.Analytics?.trackLoadTest) {

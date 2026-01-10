@@ -60,7 +60,7 @@ function setButtonLoading(buttonId, isLoading) {
     if (button) {
         const buttonText = button.querySelector('.button-text');
         const buttonLoader = button.querySelector('.button-loader');
-        
+
         if (isLoading) {
             button.disabled = true;
             if (buttonText) buttonText.style.display = 'none';
@@ -80,7 +80,7 @@ function storeAuthData(token, email, hash, userId) {
     localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_HASH, hash);
     if (userId) {
         localStorage.setItem(AUTH_CONFIG.STORAGE_KEYS.USER_ID, userId);
-        
+
         // Also save to chrome.storage.local for background script access
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
             chrome.storage.local.set({
@@ -101,7 +101,7 @@ function clearAuthData() {
     // Also remove from chrome.storage.local
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.remove([
-            AUTH_CONFIG.STORAGE_KEYS.USER_ID, 
+            AUTH_CONFIG.STORAGE_KEYS.USER_ID,
             AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL
         ]);
     }
@@ -159,8 +159,9 @@ async function getUserDetails() {
 // Signup API call
 async function signup(email, password) {
     try {
+        logger.info('Signup attempt started', { email });
         const hash = await generateHash(email, password);
-        
+
         const userDetails = await getUserDetails();
 
         const response = await fetch(`${AUTH_CONFIG.API_BASE_URL}/signup`, {
@@ -193,9 +194,11 @@ async function signup(email, password) {
         const data = await response.json();
 
         if (!response.ok) {
+            logger.error('Signup failed', { email, error: data.error || 'Unknown error', status: response.status });
             throw new Error(data.error || 'Signup failed. Please try again.');
         }
 
+        logger.info('Signup successful', { email, userId: data.userId });
         return { success: true, hash, email, userId: data.userId };
     } catch (error) {
         console.error('Signup error:', error);
@@ -206,8 +209,9 @@ async function signup(email, password) {
 // Login API call
 async function login(email, password) {
     try {
+        logger.info('Login attempt started', { email });
         const hash = await generateHash(email, password);
-        
+
         const response = await fetch(`${AUTH_CONFIG.API_BASE_URL}/login`, {
             method: 'POST',
             headers: {
@@ -235,9 +239,11 @@ async function login(email, password) {
         const data = await response.json();
 
         if (!response.ok) {
+            logger.error('Login failed', { email, error: data.error || 'Unknown error', status: response.status });
             throw new Error(data.error || 'Login failed. Please try again.');
         }
 
+        logger.info('Login successful', { email, userId: data.userId });
         return { success: true, token: data.token, hash, email, userId: data.userId };
     } catch (error) {
         console.error('Login error:', error);
@@ -249,7 +255,10 @@ async function login(email, password) {
 async function logout() {
     try {
         const token = getStoredToken();
-        
+        const email = getStoredEmail();
+
+        logger.info('Logout initiated', { email });
+
         if (!token) {
             throw new Error('No active session found.');
         }
@@ -276,9 +285,11 @@ async function logout() {
         const data = await response.json();
 
         if (!response.ok) {
+            logger.error('Logout API reported error', { email, error: data.error || 'Unknown error' });
             throw new Error(data.error || 'Logout failed. Please try again.');
         }
 
+        logger.info('Logout successful', { email });
         return { success: true };
     } catch (error) {
         console.error('Logout error:', error);
@@ -290,7 +301,7 @@ async function logout() {
 async function validateSession() {
     try {
         const token = getStoredToken();
-        
+
         if (!token) {
             return { valid: false };
         }
@@ -383,10 +394,10 @@ function initSignup() {
 
             try {
                 const result = await signup(email, password);
-                
+
                 if (result.success) {
                     showSuccess('Account created successfully! Logging you in...');
-                    
+
                     // Auto-login after signup
                     setTimeout(async () => {
                         try {
@@ -451,7 +462,7 @@ function initLogin() {
 
             try {
                 const result = await login(email, password);
-                
+
                 if (result.success) {
                     storeAuthData(result.token, result.email, result.hash, result.userId);
                     showSuccess('Login successful! Redirecting...');
@@ -495,7 +506,7 @@ function initLogout() {
 
             try {
                 const result = await logout();
-                
+
                 if (result.success) {
                     clearAuthData();
                     showSuccess('Logged out successfully! Redirecting...');
@@ -539,7 +550,7 @@ async function checkSession() {
         const token = getStoredToken();
         const email = getStoredEmail() || result.email; // Use stored or returned email
         const hash = getStoredHash();
-        
+
         if (token && email && hash) {
             storeAuthData(token, email, hash, result.userId);
         }

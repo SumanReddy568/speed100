@@ -882,6 +882,7 @@ class NetworkAIAnalysis {
         }
 
         try {
+            logger.info('LLM completion requested', { model: modelToUse });
             const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -904,6 +905,7 @@ class NetworkAIAnalysis {
 
             const data = await response.json();
             const rawContent = data?.choices?.[0]?.message?.content?.trim();
+            logger.info('LLM completion received', { model: data?.model || modelToUse });
 
             if (!rawContent) {
                 throw new Error('OpenRouter response did not include content.');
@@ -925,8 +927,10 @@ class NetworkAIAnalysis {
                 clearTimeout(timeoutId);
             }
             if (error && error.name === 'AbortError') {
+                logger.error('LLM completion timed out');
                 return { summary: null, error: 'OpenRouter request timed out.' };
             }
+            logger.error('LLM completion failed', { error: error?.message });
             return { summary: null, error: error?.message || 'Unknown OpenRouter error.' };
         }
     }
