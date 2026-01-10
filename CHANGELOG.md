@@ -1,3 +1,6 @@
+## [1.2.5] - 2026-01-10
+- add log push
+
 ## [1.2.4] - 2026-01-04
 - feat: Add AI Powered Resume Builder link and update extension version.
 
