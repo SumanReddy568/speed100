@@ -52,9 +52,23 @@ function sendProgress(message, speeds, networkInfo = null) {
 }
 
 // Function to run speed test and update results
-async function runSpeedTest() {
+async function runSpeedTest(isAutomated = false) {
+    // Helper for conditional logging
+    const log = (level, msg, data) => {
+        if (!isAutomated) {
+            // Remote logging (calls pushLog)
+            if (logger && logger[level]) {
+                logger[level](msg, data);
+            }
+        } else {
+            // Local logging only for automated tests
+            const consoleMethod = level === 'error' ? console.error : console.log;
+            consoleMethod(`[${level.toUpperCase()}] ${msg}`, data);
+        }
+    };
+
     try {
-        logger.info('Starting speed test run');
+        log('info', 'Starting speed test run');
         sendProgress('Preparing test...', { downloadSpeed: 0, uploadSpeed: 0 });
 
         // Set up progress callback
@@ -71,22 +85,22 @@ async function runSpeedTest() {
         // Get network info before running tests
         sendProgress('Gathering network info...', { downloadSpeed: 0, uploadSpeed: 0 });
         const networkInfo = await speedTest.getNetworkInfo();
-        logger.info('Network information fetched', {
+        log('info', 'Network information fetched', {
             ip: networkInfo.ipAddress,
             isp: networkInfo.isp,
             location: networkInfo.location?.city + ', ' + networkInfo.location?.country
         });
 
         sendProgress('Starting download test...', { downloadSpeed: 0, uploadSpeed: 0 }, networkInfo);
-        logger.info('Download test started');
+        log('info', 'Download test started');
         await speedTest.testDownloadSpeed();
-        logger.info('Download test finished', { speed: speedTest.downloadSpeed / 1000000 });
+        log('info', 'Download test finished', { speed: speedTest.downloadSpeed / 1000000 });
 
         sendProgress('Starting upload test...',
             { downloadSpeed: speedTest.downloadSpeed, uploadSpeed: 0 }, networkInfo);
-        logger.info('Upload test started');
+        log('info', 'Upload test started');
         await speedTest.testUploadSpeed();
-        logger.info('Upload test finished', { speed: speedTest.uploadSpeed / 1000000 });
+        log('info', 'Upload test finished', { speed: speedTest.uploadSpeed / 1000000 });
 
         lastTestResult = {
             downloadSpeed: speedTest.downloadSpeed,
@@ -95,7 +109,7 @@ async function runSpeedTest() {
             timestamp: Date.now()
         };
 
-        logger.info('Speed test completed', {
+        log('info', 'Speed test completed', {
             download: lastTestResult.downloadSpeed / 1000000,
             upload: lastTestResult.uploadSpeed / 1000000,
             ping: networkInfo.latency
@@ -110,17 +124,17 @@ async function runSpeedTest() {
             uploadSpeed: speedTest.uploadSpeed
         });
 
-        logger.info('AI analysis lifecycle started');
+        log('info', 'AI analysis lifecycle started');
         let analysis = null;
         try {
             analysis = await aiAnalysis.analyzeSpeedTest(lastTestResult);
-            logger.info('AI analysis lifecycle completed', {
+            log('info', 'AI analysis lifecycle completed', {
                 source: analysis.meta.summarySource,
                 llmUsed: analysis.meta.llmUsed,
                 model: analysis.meta.llmModel
             });
         } catch (error) {
-            logger.error('AI analysis lifecycle failed', { error: error.message });
+            log('error', 'AI analysis lifecycle failed', { error: error.message });
             console.error('AI analysis failed:', error);
         }
         lastTestResult.aiAnalysis = analysis;
@@ -150,7 +164,7 @@ async function runSpeedTest() {
 
         return lastTestResult;
     } catch (error) {
-        logger.error('Speed test failed', { error: error.message, stack: error.stack });
+        log('error', 'Speed test failed', { error: error.message, stack: error.stack });
         console.error('Speed test failed:', error);
         sendProgress('Test failed: ' + error.message,
             { downloadSpeed: speedTest.downloadSpeed, uploadSpeed: speedTest.uploadSpeed });
@@ -186,7 +200,7 @@ chrome.runtime.onInstalled.addListener(() => {
 // Handle alarms for periodic testing
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'initialSpeedTest' || alarm.name === 'nextSpeedTest') {
-        runSpeedTest();
+        runSpeedTest(true); // Pass true for automated tests
     }
 });
 
