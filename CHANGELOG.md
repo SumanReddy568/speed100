@@ -1,3 +1,6 @@
+## [1.2.6] - 2026-01-12
+- handeling unwanted log push
+
 ## [1.2.5] - 2026-01-10
 - add log push
 
