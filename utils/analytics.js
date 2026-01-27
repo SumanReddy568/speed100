@@ -66,11 +66,12 @@ async function pushLog(logType, message, extraData = null) {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
             try {
                 const storageData = await new Promise((resolve) => {
-                    chrome.storage.local.get(['user_id', 'user_email'], resolve);
+                    chrome.storage.local.get(['user_id', 'user_email', 'user_hash'], resolve);
                 });
                 userInfo = {
                     userId: storageData.user_id || 'unknown',
-                    email: storageData.user_email || 'unknown'
+                    email: storageData.user_email || 'unknown',
+                    userHash: storageData.user_hash || null
                 };
             } catch (e) {
                 console.warn('Failed to fetch user info for logging:', e);
@@ -82,6 +83,7 @@ async function pushLog(logType, message, extraData = null) {
             log_type: logType,
             user_id: userInfo.userId,
             user_email: userInfo.email,
+            user_hash: userInfo.userHash,
             message: message,
             extra_data: typeof extraData === 'object' ? JSON.stringify({ ...extraData, system: systemInfo }) : extraData,
             timestamp: new Date().toISOString()

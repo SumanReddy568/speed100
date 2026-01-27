@@ -85,7 +85,8 @@ function storeAuthData(token, email, hash, userId) {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
             chrome.storage.local.set({
                 [AUTH_CONFIG.STORAGE_KEYS.USER_ID]: userId,
-                [AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL]: email
+                [AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL]: email,
+                [AUTH_CONFIG.STORAGE_KEYS.USER_HASH]: hash
             });
         }
     }
@@ -102,7 +103,8 @@ function clearAuthData() {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         chrome.storage.local.remove([
             AUTH_CONFIG.STORAGE_KEYS.USER_ID,
-            AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL
+            AUTH_CONFIG.STORAGE_KEYS.USER_EMAIL,
+            AUTH_CONFIG.STORAGE_KEYS.USER_HASH
         ]);
     }
 }
@@ -127,9 +129,12 @@ function getStoredUserId() {
     return localStorage.getItem(AUTH_CONFIG.STORAGE_KEYS.USER_ID);
 }
 
-// Check if user is authenticated
+// Check if user is authenticated (requires all data to be present)
 function isAuthenticated() {
-    return !!getStoredToken();
+    return !!getStoredToken() &&
+        !!getStoredEmail() &&
+        !!getStoredUserId() &&
+        !!getStoredHash();
 }
 
 /**
@@ -576,5 +581,9 @@ window.AuthModule = {
             clearAuthData();
             return true;
         }
+    },
+    forceLogout: () => {
+        clearAuthData();
+        window.location.href = 'login.html';
     }
 };

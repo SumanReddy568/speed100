@@ -90,6 +90,7 @@ class NetworkAIAnalysis {
                 generatedAt: new Date().toISOString(),
                 userId: userInfo.userId,
                 email: userInfo.email,
+                userHash: userInfo.userHash,
                 aiOverrides: {
                     summary: false,
                     recommendations: false,
@@ -180,11 +181,12 @@ class NetworkAIAnalysis {
 
         try {
             const result = await new Promise((resolve) => {
-                chrome.storage.local.get(['user_id', 'user_email'], resolve);
+                chrome.storage.local.get(['user_id', 'user_email', 'user_hash'], resolve);
             });
             return {
                 userId: result.user_id || null,
-                email: result.user_email || null
+                email: result.user_email || null,
+                userHash: result.user_hash || null
             };
         } catch (error) {
             console.warn('User info lookup failed:', error);
