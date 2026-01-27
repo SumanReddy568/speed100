@@ -1,3 +1,6 @@
+## [1.2.7] - 2026-01-27
+- storage key flow chnge
+
 ## [1.2.6] - 2026-01-12
 - handeling unwanted log push
 
