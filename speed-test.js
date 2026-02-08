@@ -3,15 +3,17 @@ class SpeedTest {
         this.downloadSpeed = 0;
         this.uploadSpeed = 0;
         this.testRunning = false;
-        this.testFileSize = 10 * 1024 * 1024; // 10MB test file
+        this.testFileSize = 50 * 1024 * 1024; // Increased to 50MB per stream
         this.testFileUrl = 'https://speed.cloudflare.com/__down?bytes=';
         this.uploadEndpoint = 'https://speed.cloudflare.com/__up';
         this.progressCallback = null;
         this.lastUpdateTime = 0;
-        this.testDuration = 30000; // 30 seconds per test
-        this.sampleInterval = 250; // Update every 250ms
-        this.uploadChunkSize = 2 * 1024 * 1024; // 2MB chunks for upload
-        this.minTestDuration = 3000; // Minimum 3 seconds for meaningful results
+        this.testDuration = 10000; // 10 seconds per test stage
+        this.sampleInterval = 200; // Update every 200ms
+        this.uploadChunkSize = 4 * 1024 * 1024; // 4MB chunks for parallel upload
+        this.minTestDuration = 3000;
+        this.concurrentStreams = 4; // Use 4 parallel streams to saturate pipe
+        this.warmupDuration = 1500; // Ignore first 1.5s for TCP slow start
     }
 
     setProgressCallback(callback) {
@@ -20,199 +22,169 @@ class SpeedTest {
 
     async testDownloadSpeed() {
         const startTime = performance.now();
-        let bytesReceived = 0;
+        let totalBytesEverReceived = 0;
+        let speedSamples = [];
         this.lastUpdateTime = startTime;
 
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), this.testDuration + 2000);
+        const streamDownload = async (id) => {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), this.testDuration + 3000);
 
-            const response = await fetch(`${this.testFileUrl}${this.testFileSize}&t=${Date.now()}`, {
-                signal: controller.signal,
-                mode: 'cors'
-            });
+                const response = await fetch(`${this.testFileUrl}${this.testFileSize}&t=${Date.now()}_${id}`, {
+                    signal: controller.signal,
+                    mode: 'cors'
+                });
 
-            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
 
-            const reader = response.body.getReader();
-            let speedSamples = [];
+                const reader = response.body.getReader();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
 
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+                    totalBytesEverReceived += value.length;
+                    const currentTime = performance.now();
+                    const elapsedSinceStart = currentTime - startTime;
 
-                bytesReceived += value.length;
-                const currentTime = performance.now();
-                const elapsed = (currentTime - startTime) / 1000;
+                    if (currentTime - this.lastUpdateTime >= this.sampleInterval) {
+                        this.lastUpdateTime = currentTime;
 
-                // Calculate current speed in bits per second
-                const currentSpeed = (bytesReceived * 8) / elapsed;
-                speedSamples.push(currentSpeed);
+                        if (elapsedSinceStart > this.warmupDuration) {
+                            const effectiveElapsedSeconds = (elapsedSinceStart - this.warmupDuration) / 1000;
+                            // Calculate current speed based on total bytes since start (smoothed)
+                            const currentSpeed = (totalBytesEverReceived * 8) / (elapsedSinceStart / 1000);
+                            speedSamples.push(currentSpeed);
 
-                // Update at regular intervals
-                if (currentTime - this.lastUpdateTime >= this.sampleInterval) {
-                    // Use median of recent samples to smooth fluctuations
-                    const medianSpeed = this.calculateMedian(speedSamples.slice(-5));
-                    this.downloadSpeed = medianSpeed;
+                            this.downloadSpeed = this.calculateMedian(speedSamples.slice(-10));
+                            if (this.progressCallback) {
+                                this.progressCallback({
+                                    downloadSpeed: this.downloadSpeed,
+                                    uploadSpeed: this.uploadSpeed
+                                });
+                            }
+                        }
 
-                    if (this.progressCallback) {
-                        this.progressCallback({
-                            downloadSpeed: this.downloadSpeed,
-                            uploadSpeed: this.uploadSpeed
-                        });
-                    }
-
-                    this.lastUpdateTime = currentTime;
-
-                    // Stop if we've reached the test duration
-                    if (currentTime - startTime >= this.testDuration) {
-                        controller.abort();
-                        break;
+                        if (elapsedSinceStart >= this.testDuration) {
+                            controller.abort();
+                            break;
+                        }
                     }
                 }
+                clearTimeout(timeout);
+            } catch (err) {
+                if (err.name !== 'AbortError') console.error(`Download Stream ${id} failed:`, err);
             }
+        };
 
-            clearTimeout(timeout);
+        const streams = Array.from({ length: this.concurrentStreams }, (_, i) => streamDownload(i));
+        await Promise.all(streams);
 
-            // Final calculation using all samples
-            if (speedSamples.length > 0) {
-                this.downloadSpeed = this.calculateMedian(speedSamples);
-            }
-
-            return this.downloadSpeed;
-        } catch (error) {
-            console.error('Download test failed:', error);
-            this.downloadSpeed = 0;
-            return this.downloadSpeed || 0;
+        if (speedSamples.length > 0) {
+            speedSamples.sort((a, b) => a - b);
+            const index = Math.floor(speedSamples.length * 0.9);
+            this.downloadSpeed = speedSamples[index];
         }
+
+        return this.downloadSpeed;
     }
 
     async testUploadSpeed() {
         const startTime = performance.now();
-        let bytesSent = 0;
+        let totalBytesSent = 0;
+        let speedSamples = [];
         this.lastUpdateTime = startTime;
 
-        try {
-            // Generate random test data
-            const testData = this.generateTestData(this.uploadChunkSize);
-            const blob = new Blob([testData]);
-
-            let speedSamples = [];
-            let lastSampleTime = startTime;
-            let lastBytesSent = 0;
-
-            // We'll use fetch with timing measurements since we can't track progress in service workers
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), this.testDuration);
-
-            // Start timing the upload
-            const uploadStart = performance.now();
-            const response = await fetch(this.uploadEndpoint, {
-                method: 'POST',
-                body: blob,
-                signal: controller.signal,
-                mode: 'no-cors',
-                headers: {
-                    'Content-Type': 'application/octet-stream'
-                }
-            });
-
-            // Even though we can't read the response, we can measure the time it took
-            const uploadEnd = performance.now();
-            const uploadTime = (uploadEnd - uploadStart) / 1000; // in seconds
-
-            // Calculate speed (total bytes * 8 bits/byte / time in seconds)
-            bytesSent = testData.length;
-            const speed = (bytesSent * 8) / uploadTime;
-            speedSamples.push(speed);
-
-            // To get more samples, we'll do multiple smaller uploads
-            const chunkCount = Math.min(5, Math.floor(this.testDuration / 2000)); // Aim for ~2s per chunk
-            const chunkSize = Math.floor(this.uploadChunkSize / 2); // Smaller chunks for more samples
-
-            if (chunkCount > 1) {
-                for (let i = 0; i < chunkCount; i++) {
-                    if (performance.now() - startTime >= this.testDuration) break;
-
-                    const chunkData = this.generateTestData(chunkSize);
-                    const chunkBlob = new Blob([chunkData]);
-
+        const streamUpload = async (id) => {
+            while (performance.now() - startTime < this.testDuration) {
+                try {
+                    const testData = this.generateTestData(this.uploadChunkSize);
+                    const blob = new Blob([testData]);
                     const chunkStart = performance.now();
+
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 5000);
+
                     await fetch(this.uploadEndpoint, {
                         method: 'POST',
-                        body: chunkBlob,
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'application/octet-stream'
-                        }
+                        body: blob,
+                        signal: controller.signal,
+                        mode: 'no-cors'
                     });
-                    const chunkEnd = performance.now();
-                    const chunkTime = (chunkEnd - chunkStart) / 1000;
 
-                    if (chunkTime > 0.1) { // Ignore very fast measurements
-                        const chunkSpeed = (chunkData.length * 8) / chunkTime;
-                        speedSamples.push(chunkSpeed);
-                        bytesSent += chunkData.length;
+                    clearTimeout(timeout);
+                    const chunkEnd = performance.now();
+                    const chunkDuration = (chunkEnd - chunkStart) / 1000;
+
+                    if (chunkDuration > 0.05) { // Ignore near-instantaneous (cached/error)
+                        const chunkSpeed = (testData.length * 8) / chunkDuration;
+                        totalBytesSent += testData.length;
+
+                        const elapsedSinceStart = chunkEnd - startTime;
+
+                        if (elapsedSinceStart > this.warmupDuration) {
+                            speedSamples.push(chunkSpeed);
+
+                            // Estimate current overall speed
+                            this.uploadSpeed = this.calculateMedian(speedSamples.slice(-10));
+
+                            if (this.progressCallback) {
+                                this.progressCallback({
+                                    downloadSpeed: this.downloadSpeed,
+                                    uploadSpeed: this.uploadSpeed
+                                });
+                            }
+                        }
                     }
+                } catch (err) {
+                    if (err.name !== 'AbortError') console.error(`Upload Stream ${id} failed:`, err);
+                    await new Promise(r => setTimeout(r, 100)); // Cool down on error
                 }
             }
+        };
 
-            clearTimeout(timeout);
+        const streams = Array.from({ length: this.concurrentStreams }, (_, i) => streamUpload(i));
+        await Promise.all(streams);
 
-            // Calculate final speed (use 90th percentile to avoid outliers)
-            if (speedSamples.length > 0) {
-                speedSamples.sort((a, b) => a - b);
-                const percentile90 = Math.floor(speedSamples.length * 0.9);
-                this.uploadSpeed = speedSamples[percentile90];
-            } else {
-                // Fallback to total bytes / total time
-                const totalTime = (performance.now() - startTime) / 1000;
-                this.uploadSpeed = totalTime > 0 ? (bytesSent * 8) / totalTime : 0;
-            }
-
-            if (this.progressCallback) {
-                this.progressCallback({
-                    downloadSpeed: this.downloadSpeed,
-                    uploadSpeed: this.uploadSpeed
-                });
-            }
-
-            return this.uploadSpeed;
-        } catch (error) {
-            console.error('Upload test failed:', error);
-            this.uploadSpeed = 0;
-            return this.uploadSpeed || 0;
+        if (speedSamples.length > 0) {
+            speedSamples.sort((a, b) => a - b);
+            const index = Math.floor(speedSamples.length * 0.9);
+            this.uploadSpeed = speedSamples[index];
         }
+
+        return this.uploadSpeed;
     }
 
     async testLoadSpeed(fileSizeMB) {
-        const fileSizeBytes = fileSizeMB * 1024 * 1024; // Convert MB to bytes
+        const totalBytes = fileSizeMB * 1024 * 1024;
         const startTime = performance.now();
-        let bytesReceived = 0;
+        let bytesReceivedTotal = 0;
+        const chunkSize = 25 * 1024 * 1024; // 25MB chunks
 
         try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), this.testDuration + 2000);
+            while (bytesReceivedTotal < totalBytes) {
+                const currentChunkSize = Math.min(chunkSize, totalBytes - bytesReceivedTotal);
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout per chunk
 
-            const response = await fetch(`${this.testFileUrl}${fileSizeBytes}&t=${Date.now()}`, {
-                signal: controller.signal,
-                mode: 'cors'
-            });
+                const response = await fetch(`${this.testFileUrl}${currentChunkSize}&t=${Date.now()}_${bytesReceivedTotal}`, {
+                    signal: controller.signal,
+                    mode: 'cors'
+                });
 
-            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
 
-            const reader = response.body.getReader();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                bytesReceived += value.length;
+                const reader = response.body.getReader();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    bytesReceivedTotal += value.length;
+                }
+                clearTimeout(timeout);
             }
 
-            clearTimeout(timeout);
-
-            const elapsed = (performance.now() - startTime) / 1000; // Time in seconds
-            const speedMbps = (bytesReceived * 8) / (elapsed * 1024 * 1024); // Convert to Mbps
+            const elapsed = (performance.now() - startTime) / 1000;
+            const speedMbps = (totalBytes * 8) / (elapsed * 1024 * 1024);
 
             return {
                 fileSizeMB,
@@ -235,37 +207,51 @@ class SpeedTest {
 
         this.testRunning = true;
         const startTime = performance.now();
-        let bytesReceived = 0;
+        let bytesReceivedTotal = 0;
         const totalBytes = fileSizeMB * 1024 * 1024;
+        const chunkSize = 25 * 1024 * 1024; // Use 25MB chunks to avoid 403 and server limits
 
         try {
-            const controller = new AbortController();
-            const response = await fetch(`${this.testFileUrl}${totalBytes}&t=${Date.now()}`, {
-                signal: controller.signal,
-                mode: 'cors'
-            });
+            while (bytesReceivedTotal < totalBytes) {
+                const currentRequestSize = Math.min(chunkSize, totalBytes - bytesReceivedTotal);
+                const controller = new AbortController();
 
-            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+                // Add a unique timestamp and chunk offset to bypass caching and potentially WAF rules
+                const url = `${this.testFileUrl}${currentRequestSize}&t=${Date.now()}_${bytesReceivedTotal}`;
 
-            const reader = response.body.getReader();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
+                const response = await fetch(url, {
+                    signal: controller.signal,
+                    mode: 'cors',
+                    cache: 'no-store'
+                });
 
-                bytesReceived += value.length;
-                const progress = bytesReceived / totalBytes;
-                const currentTime = performance.now();
-                const elapsedSeconds = (currentTime - startTime) / 1000;
-                const speedMbps = (bytesReceived * 8) / (elapsedSeconds * 1000000);
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        throw new Error(`Cloudflare rejected the request (403). The test size may be too large or requests too frequent.`);
+                    }
+                    throw new Error(`HTTP error: ${response.status}`);
+                }
 
-                if (progressCallback) {
-                    progressCallback({
-                        progress,
-                        speedMbps,
-                        bytesReceived,
-                        totalBytes,
-                        elapsedSeconds
-                    });
+                const reader = response.body.getReader();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    bytesReceivedTotal += value.length;
+                    const progressValue = bytesReceivedTotal / totalBytes;
+                    const currentTime = performance.now();
+                    const elapsedSeconds = (currentTime - startTime) / 1000;
+                    const speedMbps = (bytesReceivedTotal * 8) / (elapsedSeconds * 1000000);
+
+                    if (progressCallback) {
+                        progressCallback({
+                            progress: progressValue,
+                            speedMbps: speedMbps,
+                            bytesReceived: bytesReceivedTotal,
+                            totalBytes: totalBytes,
+                            elapsedSeconds: elapsedSeconds
+                        });
+                    }
                 }
             }
 
@@ -394,244 +380,5 @@ class SpeedTest {
         }
     }
 }
-
-SpeedTest.prototype.getNetworkInfo = async function () {
-    const networkInfo = {
-        ipAddress: '-',
-        localAddress: '-',
-        dns: '-',
-        signalStrength: '-',
-        connectionType: '-',
-        latency: '-',
-        ping: '-',
-        jitter: '-',
-        packetLoss: '-',
-        networkName: '-',
-        location: {
-            country: '-',
-            city: '-',
-            region: '-',
-            timezone: '-',
-        },
-        isp: '-',
-        serverInfo: {
-            name: '-',
-            organization: '-',
-        },
-        status: '-',
-    };
-
-    try {
-        const hasNetworkInformationApi =
-            typeof navigator !== 'undefined' &&
-            navigator.connection &&
-            typeof navigator.connection === 'object';
-
-        if (hasNetworkInformationApi) {
-            const connection = navigator.connection;
-            networkInfo.connectionType = connection.effectiveType || connection.type || 'Unknown';
-            networkInfo.networkName = connection.type || connection.effectiveType || 'Unknown';
-
-            if (connection.downlink !== undefined) {
-                networkInfo.signalStrength = `${connection.downlink} Mbps`;
-            }
-
-            if (connection.rtt) {
-                networkInfo.latency = `${connection.rtt} ms`;
-            }
-        } else {
-            console.warn('Network Information API is not available in this context.');
-        }
-
-        try {
-            const ipResponse = await Promise.race([
-                fetch('https://api.ipify.org?format=json', { mode: 'cors' }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-            ]);
-
-            if (ipResponse.ok) {
-                const data = await ipResponse.json();
-                networkInfo.ipAddress = data.ip || 'Unavailable';
-
-                try {
-                    const geoResponse = await fetch(`https://ipwho.is/${data.ip}`, { mode: 'cors' });
-                    if (geoResponse.ok) {
-                        const geoData = await geoResponse.json();
-                        if (geoData && geoData.success !== false) {
-                            networkInfo.location.country = geoData.country || 'Unavailable';
-                            networkInfo.location.city = geoData.city || 'Unavailable';
-                            networkInfo.location.region = geoData.region || 'Unavailable';
-                            networkInfo.location.timezone = geoData.timezone?.id || geoData.timezone || 'Unavailable';
-                            networkInfo.isp = geoData.connection?.isp || geoData.connection?.org || geoData.isp || 'Unavailable';
-                        } else {
-                            console.warn('Geo IP lookup did not return success:', geoData?.message || 'Unknown error');
-                        }
-                    }
-                } catch (geoError) {
-                    console.warn('Geo IP lookup failed:', geoError.message);
-                }
-            }
-        } catch (ipError) {
-            console.warn('Public IP detection failed:', ipError.message);
-        }
-
-        const latencyResult = await this.testLatency();
-        if (latencyResult.latency !== 'Unavailable') {
-            networkInfo.latency = latencyResult.latency;
-            networkInfo.ping = latencyResult.ping;
-            networkInfo.jitter = latencyResult.jitter;
-            networkInfo.packetLoss = latencyResult.loss;
-            networkInfo.serverInfo = latencyResult.serverInfo;
-        }
-
-        try {
-            const hostname =
-                (typeof window !== 'undefined' && window.location && window.location.hostname) ||
-                (typeof self !== 'undefined' && self.location && self.location.hostname) ||
-                '';
-
-            if (hostname) {
-                const dnsResponse = await fetch('https://dns.google/resolve?name=' + hostname);
-                if (dnsResponse.ok) {
-                    networkInfo.dns = 'Google DNS';
-                }
-            } else {
-                console.warn('DNS detection skipped: hostname is unavailable in this context.');
-            }
-        } catch (dnsError) {
-            console.warn("DNS detection failed:", dnsError.message);
-        }
-
-        if (typeof RTCPeerConnection !== 'undefined') {
-            try {
-                const rtcPeerConnection = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
-
-                rtcPeerConnection.createDataChannel("");
-                rtcPeerConnection.createOffer()
-                    .then(offer => rtcPeerConnection.setLocalDescription(offer))
-                    .catch(err => console.warn("RTC local detection failed:", err));
-
-                rtcPeerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        const localIP = event.candidate.address || event.candidate.ip;
-                        if (localIP) {
-                            networkInfo.localAddress = localIP;
-                        }
-                    }
-                };
-
-                setTimeout(() => rtcPeerConnection.close(), 5000);
-            } catch (rtcError) {
-                console.warn("Local network detection failed:", rtcError.message);
-            }
-        } else {
-            console.warn('Local network detection skipped: RTCPeerConnection is not available.');
-        }
-
-        networkInfo.status = 'completed';
-        return networkInfo;
-
-    } catch (error) {
-        networkInfo.status = 'error';
-        networkInfo.error = error.message || 'Unknown error occurred';
-        return networkInfo;
-    }
-};
-
-SpeedTest.prototype.testLatency = async function () {
-    const testEndpoints = [
-        {
-            url: 'https://www.google.com',
-            name: 'Google',
-            organization: 'Google LLC'
-        },
-        {
-            url: 'https://www.cloudflare.com',
-            name: 'Cloudflare',
-            organization: 'Cloudflare, Inc.'
-        },
-        {
-            url: 'https://www.amazon.com',
-            name: 'Amazon',
-            organization: 'Amazon.com, Inc.'
-        }
-    ];
-
-    let latencies = [];
-    let bestServer = null;
-    let bestLatency = Infinity;
-    let packetLossCount = 0;
-    const samplesPerEndpoint = 4; // 12 samples total
-
-    for (const endpoint of testEndpoints) {
-        for (let i = 0; i < samplesPerEndpoint; i++) {
-            try {
-                const startTime = performance.now();
-                // Use a short timeout for each probe
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 2000);
-
-                await fetch(endpoint.url, {
-                    method: 'HEAD',
-                    mode: 'no-cors',
-                    cache: 'no-store',
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeout);
-                const endTime = performance.now();
-                const latency = endTime - startTime;
-
-                latencies.push(latency);
-
-                if (latency < bestLatency) {
-                    bestLatency = latency;
-                    bestServer = endpoint;
-                }
-            } catch (error) {
-                packetLossCount++;
-            }
-        }
-    }
-
-    const totalAttempts = testEndpoints.length * samplesPerEndpoint;
-    const lossPercentage = (packetLossCount / totalAttempts) * 100;
-
-    if (latencies.length > 0) {
-        // Ping: Minimum stable latency
-        const pingValue = Math.min(...latencies);
-
-        // Jitter: Mean variation between consecutive samples
-        let jitterSum = 0;
-        for (let i = 1; i < latencies.length; i++) {
-            jitterSum += Math.abs(latencies[i] - latencies[i - 1]);
-        }
-        const jitterValue = latencies.length > 1 ? jitterSum / (latencies.length - 1) : 0;
-
-        return {
-            ping: Math.round(pingValue),
-            jitter: Math.round(jitterValue * 10) / 10,
-            loss: Math.round(lossPercentage * 10) / 10,
-            latency: `${Math.round(pingValue)} ms`,
-            serverInfo: {
-                name: bestServer.name,
-                organization: bestServer.organization
-            }
-        };
-    }
-
-    return {
-        ping: 0,
-        jitter: 0,
-        loss: 100,
-        latency: 'Unavailable',
-        serverInfo: {
-            name: 'Unavailable',
-            organization: 'Unavailable'
-        }
-    };
-};
 
 self.SpeedTest = SpeedTest;

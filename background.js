@@ -1,4 +1,4 @@
-importScripts('utils/analytics.js', 'speed-test.js', 'services/ai-analysis.js');
+importScripts('utils/analytics.js', 'speed-test.js', 'services/network-diagnostics.js', 'services/ai-analysis.js');
 
 const speedTest = new self.SpeedTest();
 const aiAnalysis = new self.NetworkAIAnalysis();
@@ -12,6 +12,11 @@ let lastTestResult = {
 
 // Function to update the badge with current download speed
 function updateBadge(speedMbps) {
+    if (speedMbps === null) {
+        chrome.action.setBadgeText({ text: '' });
+        return;
+    }
+
     let displaySpeed = Math.min(999, Math.round(speedMbps)).toString();
 
     chrome.action.setBadgeText({
@@ -23,8 +28,16 @@ function updateBadge(speedMbps) {
     });
 }
 
+// Function to check if user is authenticated (background version)
+async function checkAuth() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['user_id'], function (result) {
+            resolve(!!result.user_id);
+        });
+    });
+}
+
 // Function to send progress updates
-// In your service-worker.js
 function sendProgress(message, speeds, networkInfo = null) {
     // Check if online before proceeding
     if (!navigator.onLine) {
@@ -53,6 +66,16 @@ function sendProgress(message, speeds, networkInfo = null) {
 
 // Function to run speed test and update results
 async function runSpeedTest(isAutomated = false) {
+    // Check authentication before running
+    const isAuthenticated = await checkAuth();
+    if (!isAuthenticated) {
+        if (!isAutomated) {
+            console.warn('Manual speed test requested but user is not logged in.');
+        }
+        updateBadge(null); // Clear badge if not authenticated
+        return null;
+    }
+
     // Helper for conditional logging
     const log = (level, msg, data) => {
         if (!isAutomated) {
@@ -186,8 +209,14 @@ async function runSpeedTest(isAutomated = false) {
 }
 
 // Initialize extension
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.action.setBadgeText({ text: '0' });
+chrome.runtime.onInstalled.addListener(async () => {
+    const isAuthenticated = await checkAuth();
+    if (isAuthenticated) {
+        chrome.action.setBadgeText({ text: '0' });
+    } else {
+        chrome.action.setBadgeText({ text: '' });
+    }
+
     chrome.storage.sync.get(['testInterval'], function (result) {
         const interval = result.testInterval || '30';
         if (interval !== '0') {
@@ -195,6 +224,26 @@ chrome.runtime.onInstalled.addListener(() => {
             chrome.alarms.create('nextSpeedTest', { periodInMinutes: parseInt(interval) });
         }
     });
+});
+
+// Listener for storage changes to handle logout immediately
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.user_id) {
+        if (!changes.user_id.newValue) {
+            // User logged out (user_id removed)
+            updateBadge(null);
+
+            // Clear last test result
+            lastTestResult = {
+                downloadSpeed: 0,
+                uploadSpeed: 0,
+                networkInfo: {},
+                timestamp: null
+            };
+
+            console.log('User logged out, cleared badge and results');
+        }
+    }
 });
 
 // Handle alarms for periodic testing
