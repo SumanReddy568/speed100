@@ -1,3 +1,6 @@
+## [1.2.8] - 2026-02-08
+- decouple migration
+
 ## [1.2.7] - 2026-01-27
 - storage key flow chnge
 
