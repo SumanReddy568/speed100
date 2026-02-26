@@ -14,6 +14,10 @@ class SpeedTest {
         this.minTestDuration = 3000;
         this.concurrentStreams = 4; // Use 4 parallel streams to saturate pipe
         this.warmupDuration = 1500; // Ignore first 1.5s for TCP slow start
+
+        // Advanced testing configuration
+        this.advancedApiBase = 'https://open-api-worker.sumanreddy568.workers.dev';
+        this.useAdvancedTesting = false;
     }
 
     setProgressCallback(callback) {
@@ -334,14 +338,25 @@ class SpeedTest {
                 };
             }
 
-            // Get network info without verbose logging
-            const networkInfo = await this.getNetworkInfo();
+            // Check if advanced testing is enabled
+            const advancedEnabled = await this.isAdvancedTestingEnabled();
+
+            // Get network info
+            const networkInfo = advancedEnabled
+                ? await this.getAdvancedNetworkInfo()
+                : await this.getNetworkInfo();
 
             // Run speed tests
-            await this.testDownloadSpeed();
-
-            if (this.downloadSpeed > 0) {
-                await this.testUploadSpeed();
+            if (advancedEnabled) {
+                await this.testAdvancedDownloadSpeed();
+                if (this.downloadSpeed > 0) {
+                    await this.testAdvancedUploadSpeed();
+                }
+            } else {
+                await this.testDownloadSpeed();
+                if (this.downloadSpeed > 0) {
+                    await this.testUploadSpeed();
+                }
             }
 
             return {
@@ -367,6 +382,18 @@ class SpeedTest {
         }
     }
 
+    async isAdvancedTestingEnabled() {
+        return new Promise((resolve) => {
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.sync.get(['advancedSpeedTest'], (result) => {
+                    resolve(result.advancedSpeedTest || false);
+                });
+            } else {
+                resolve(false);
+            }
+        });
+    }
+
     async checkConnectivity() {
         try {
             const response = await fetch('https://www.google.com', {
@@ -377,6 +404,217 @@ class SpeedTest {
             return true;
         } catch (error) {
             return false;
+        }
+    }
+
+    // Advanced Speed Test Methods
+    async getUserIdAndHash() {
+        // Get user ID and Hash from chrome storage
+        return new Promise((resolve) => {
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.local.get(['user_id', 'user_hash'], (result) => {
+                    if (result.user_id && result.user_hash) {
+                        resolve({
+                            userId: result.user_id,
+                            hash: result.user_hash
+                        });
+                    } else {
+                        // Missing credentials - return null to signal fallback
+                        resolve(null);
+                    }
+                });
+            } else {
+                // Non-extension environment - return null to enforce fallback
+                resolve(null);
+            }
+        });
+    }
+
+    async testAdvancedDownloadSpeed() {
+        const credentials = await this.getUserIdAndHash();
+
+        // If no credentials, fallback to standard test immediately
+        if (!credentials) {
+            console.warn('Advanced download test skipped: Missing user credentials');
+            return await this.testDownloadSpeed();
+        }
+
+        const { userId, hash } = credentials;
+        const startTime = performance.now();
+        let totalBytesReceived = 0;
+        let speedSamples = [];
+        this.lastUpdateTime = startTime;
+
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), this.testDuration + 3000);
+
+            const response = await fetch(`${this.advancedApiBase}/download?userId=${userId}&hash=${hash}`, {
+                signal: controller.signal,
+                mode: 'cors'
+            });
+
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+            const reader = response.body.getReader();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                totalBytesReceived += value.length;
+                const currentTime = performance.now();
+                const elapsedSinceStart = currentTime - startTime;
+
+                if (currentTime - this.lastUpdateTime >= this.sampleInterval) {
+                    this.lastUpdateTime = currentTime;
+
+                    if (elapsedSinceStart > this.warmupDuration) {
+                        const currentSpeed = (totalBytesReceived * 8) / (elapsedSinceStart / 1000);
+                        speedSamples.push(currentSpeed);
+
+                        this.downloadSpeed = this.calculateMedian(speedSamples.slice(-10));
+                        if (this.progressCallback) {
+                            this.progressCallback({
+                                downloadSpeed: this.downloadSpeed,
+                                uploadSpeed: this.uploadSpeed
+                            });
+                        }
+                    }
+
+                    if (elapsedSinceStart >= this.testDuration) {
+                        controller.abort();
+                        break;
+                    }
+                }
+            }
+            clearTimeout(timeout);
+
+            if (speedSamples.length > 0) {
+                speedSamples.sort((a, b) => a - b);
+                const index = Math.floor(speedSamples.length * 0.9);
+                this.downloadSpeed = speedSamples[index];
+            }
+
+            return this.downloadSpeed;
+        } catch (err) {
+            if (err.name !== 'AbortError') console.error('Advanced download test failed:', err);
+            // Fallback to standard test
+            return await this.testDownloadSpeed();
+        }
+    }
+
+    async testAdvancedUploadSpeed() {
+        const credentials = await this.getUserIdAndHash();
+
+        // If no credentials, fallback to standard test immediately
+        if (!credentials) {
+            console.warn('Advanced upload test skipped: Missing user credentials');
+            return await this.testUploadSpeed();
+        }
+
+        const { userId, hash } = credentials;
+        const startTime = performance.now();
+        let totalBytesSent = 0;
+        let speedSamples = [];
+        this.lastUpdateTime = startTime;
+
+        // Create a 10MB test file
+        const testData = this.generateTestData(10 * 1024 * 1024);
+        const blob = new Blob([testData]);
+
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), this.testDuration + 3000);
+
+            const uploadStart = performance.now();
+            const response = await fetch(`${this.advancedApiBase}/upload?userId=${userId}&hash=${hash}`, {
+                method: 'POST',
+                body: blob,
+                signal: controller.signal,
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/octet-stream'
+                }
+            });
+
+            clearTimeout(timeout);
+            const uploadEnd = performance.now();
+            const uploadDuration = (uploadEnd - uploadStart) / 1000;
+
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+            // Calculate speed based on upload duration
+            if (uploadDuration > 0.05) {
+                const speed = (testData.length * 8) / uploadDuration;
+                speedSamples.push(speed);
+                totalBytesSent += testData.length;
+
+                this.uploadSpeed = speed;
+                if (this.progressCallback) {
+                    this.progressCallback({
+                        downloadSpeed: this.downloadSpeed,
+                        uploadSpeed: this.uploadSpeed
+                    });
+                }
+            }
+
+            return this.uploadSpeed;
+        } catch (err) {
+            if (err.name !== 'AbortError') console.error('Advanced upload test failed:', err);
+            // Fallback to standard test
+            return await this.testUploadSpeed();
+        }
+    }
+
+    async getAdvancedNetworkInfo() {
+        const credentials = await this.getUserIdAndHash();
+
+        // If no credentials, fallback to standard test immediately
+        if (!credentials) {
+            console.warn('Advanced network info skipped: Missing user credentials');
+            return await this.getNetworkInfo();
+        }
+
+        const { userId, hash } = credentials;
+
+        try {
+            const response = await fetch(`${this.advancedApiBase}/network?userId=${userId}&hash=${hash}`, {
+                mode: 'cors'
+            });
+
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+            const data = await response.json();
+
+            // Transform the response to match the expected format
+            return {
+                ipAddress: data.ip || '-',
+                localAddress: '-',
+                dns: '-',
+                signalStrength: '-',
+                connectionType: data.connectionType || '-',
+                latency: data.latency ? `${data.latency} ms` : '-',
+                ping: data.ping || '-',
+                jitter: data.jitter || '-',
+                packetLoss: data.packetLoss || '-',
+                networkName: '-',
+                location: {
+                    country: data.country || '-',
+                    city: data.city || '-',
+                    region: data.region || '-',
+                    timezone: data.timezone || '-',
+                },
+                isp: data.isp || '-',
+                serverInfo: {
+                    name: data.serverName || '-',
+                    organization: data.serverOrg || '-',
+                },
+                status: 'completed',
+            };
+        } catch (error) {
+            console.error('Advanced network info failed:', error);
+            // Fallback to standard network info
+            return await this.getNetworkInfo();
         }
     }
 }

@@ -864,6 +864,72 @@ svg line {
     font-size: 11px;
 }
 
+/* Toggle Switch Styles */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+    margin-left: auto;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #444;
+    transition: 0.3s;
+    border-radius: 24px;
+    border: 1px solid #555;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 2px;
+    background-color: #888;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked+.toggle-slider {
+    background: linear-gradient(to right, #4285f4, #34a853);
+    border-color: #4285f4;
+}
+
+.toggle-switch input:checked+.toggle-slider:before {
+    transform: translateX(26px);
+    background-color: #fff;
+}
+
+.toggle-switch input:focus+.toggle-slider {
+    box-shadow: 0 0 4px rgba(66, 133, 244, 0.5);
+}
+
+.setting-option label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.setting-option label span {
+    font-weight: 500;
+    color: #e0e0e0;
+}
+
+
 .tools-links {
     display: flex;
     flex-direction: column;

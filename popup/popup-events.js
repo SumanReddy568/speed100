@@ -54,14 +54,27 @@ window.PopupEvents = {
 
         elements.settingsIcon.addEventListener('click', () => {
             elements.settingsModal.style.display = 'block';
+
+            // Load current settings when modal opens
+            chrome.storage.sync.get(['advancedSpeedTest'], (result) => {
+                const advancedTestToggle = document.getElementById('advanced-test-toggle');
+                if (advancedTestToggle) {
+                    advancedTestToggle.checked = result.advancedSpeedTest || false;
+                }
+            });
         });
 
         elements.saveSettings.addEventListener('click', async () => {
             const interval = elements.testInterval.value;
             const apiKey = elements.openRouterApiKeyInput ? elements.openRouterApiKeyInput.value.trim() : '';
             const llmModel = elements.llmModelInput ? elements.llmModelInput.value.trim() : '';
+            const advancedTestToggle = document.getElementById('advanced-test-toggle');
+            const advancedSpeedTest = advancedTestToggle ? advancedTestToggle.checked : false;
 
-            const storagePromises = [chrome.storage.sync.set({ testInterval: interval })];
+            const storagePromises = [
+                chrome.storage.sync.set({ testInterval: interval }),
+                chrome.storage.sync.set({ advancedSpeedTest: advancedSpeedTest })
+            ];
 
             if (elements.openRouterApiKeyInput) {
                 if (apiKey) storagePromises.push(chrome.storage.local.set({ openRouterApiKey: apiKey }));

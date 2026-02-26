@@ -105,24 +105,42 @@ async function runSpeedTest(isAutomated = false) {
             });
         });
 
+        // Check if advanced testing is enabled
+        const advancedEnabled = await new Promise((resolve) => {
+            chrome.storage.sync.get(['advancedSpeedTest'], (result) => {
+                resolve(result.advancedSpeedTest || false);
+            });
+        });
+
         // Get network info before running tests
         sendProgress('Gathering network info...', { downloadSpeed: 0, uploadSpeed: 0 });
-        const networkInfo = await speedTest.getNetworkInfo();
+        const networkInfo = advancedEnabled
+            ? await speedTest.getAdvancedNetworkInfo()
+            : await speedTest.getNetworkInfo();
         log('info', 'Network information fetched', {
             ip: networkInfo.ipAddress,
             isp: networkInfo.isp,
-            location: networkInfo.location?.city + ', ' + networkInfo.location?.country
+            location: networkInfo.location?.city + ', ' + networkInfo.location?.country,
+            advancedMode: advancedEnabled
         });
 
         sendProgress('Starting download test...', { downloadSpeed: 0, uploadSpeed: 0 }, networkInfo);
         log('info', 'Download test started');
-        await speedTest.testDownloadSpeed();
+        if (advancedEnabled) {
+            await speedTest.testAdvancedDownloadSpeed();
+        } else {
+            await speedTest.testDownloadSpeed();
+        }
         log('info', 'Download test finished', { speed: speedTest.downloadSpeed / 1000000 });
 
         sendProgress('Starting upload test...',
             { downloadSpeed: speedTest.downloadSpeed, uploadSpeed: 0 }, networkInfo);
         log('info', 'Upload test started');
-        await speedTest.testUploadSpeed();
+        if (advancedEnabled) {
+            await speedTest.testAdvancedUploadSpeed();
+        } else {
+            await speedTest.testUploadSpeed();
+        }
         log('info', 'Upload test finished', { speed: speedTest.uploadSpeed / 1000000 });
 
         lastTestResult = {
