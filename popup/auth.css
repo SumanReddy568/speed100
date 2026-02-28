@@ -1,6 +1,3 @@
-/* Import Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 /* Reset and Base Styles */
 * {
     margin: 0;
@@ -12,59 +9,63 @@ body {
     width: 360px;
     margin: 0;
     padding: 15px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #1e1e1e;
+    color: #e0e0e0;
     min-height: 100vh;
     box-sizing: border-box;
-    /* Include padding in width */
     overflow-x: hidden;
 }
 
 /* Auth Container */
 .auth-container {
     width: 100%;
-    /* Remove max-width as fixed body width controls it */
     position: relative;
     z-index: 1;
-    animation: slideUp 0.4s ease-out;
-    /* Faster animation */
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Auth Card */
 .auth-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(20px);
-    border-radius: 16px;
-    /* Smaller radius */
+    background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+    border-radius: 12px;
     padding: 20px;
-    /* Reduced padding */
     box-shadow:
-        0 10px 30px rgba(0, 0, 0, 0.2),
-        0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+        0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 1px solid #333;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .auth-card:hover {
     transform: translateY(-2px);
-    /* Subtle hover */
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
 }
 
 /* Auth Header */
 .auth-header {
     text-align: center;
     margin-bottom: 20px;
-    /* Reduced margin */
 }
 
 .logo-icon {
     font-size: 40px;
-    /* Smaller icon */
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4285f4, #34a853);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin-bottom: 8px;
-    /* Reduced margin */
     display: inline-block;
     animation: pulse 2s ease-in-out infinite;
 }
@@ -83,30 +84,24 @@ body {
 
 .auth-header h1 {
     font-size: 24px;
-    /* Reduced from 32px */
     font-weight: 700;
-    color: #1a202c;
+    color: #e0e0e0;
     margin-bottom: 4px;
-    /* Reduced from 8px */
-    letter-spacing: -0.5px;
 }
 
 .subtitle {
     font-size: 14px;
-    /* Reduced from 16px */
-    color: #718096;
+    color: #aaa;
     font-weight: 400;
 }
 
 /* Auth Form */
 .auth-form {
     margin-bottom: 20px;
-    /* Reduced from 24px */
 }
 
 .form-group {
     margin-bottom: 16px;
-    /* Reduced from 24px */
 }
 
 .form-group label {
@@ -114,15 +109,13 @@ body {
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    /* Reduced from 14px */
     font-weight: 600;
-    color: #2d3748;
+    color: #ddd;
     margin-bottom: 6px;
-    /* Reduced from 8px */
 }
 
 .form-group label i {
-    color: #667eea;
+    color: #4285f4;
     font-size: 12px;
 }
 
@@ -131,27 +124,24 @@ body {
 .form-group input[type="text"] {
     width: 100%;
     padding: 10px 12px;
-    /* Reduced padding */
     font-size: 13px;
-    /* Reduced from 15px */
-    border: 2px solid #e2e8f0;
+    border: 1px solid #444;
     border-radius: 8px;
-    /* Reduced radius */
-    background: #ffffff;
-    color: #2d3748;
+    background: #333;
+    color: #fff;
     transition: all 0.3s ease;
     font-family: inherit;
 }
 
 .form-group input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #4285f4;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
     transform: translateY(-1px);
 }
 
 .form-group input::placeholder {
-    color: #a0aec0;
+    color: #888;
 }
 
 /* Password Input Wrapper */
@@ -163,7 +153,6 @@ body {
 
 .password-input-wrapper input {
     padding-right: 40px;
-    /* Adjusted */
 }
 
 .toggle-password {
@@ -171,7 +160,7 @@ body {
     right: 8px;
     background: none;
     border: none;
-    color: #718096;
+    color: #aaa;
     cursor: pointer;
     padding: 6px;
     display: flex;
@@ -182,7 +171,7 @@ body {
 }
 
 .toggle-password:hover {
-    color: #667eea;
+    color: #4285f4;
 }
 
 .toggle-password:focus {
@@ -193,8 +182,7 @@ body {
     display: block;
     margin-top: 4px;
     font-size: 11px;
-    /* Reduced from 12px */
-    color: #718096;
+    color: #888;
 }
 
 /* Messages */
@@ -224,9 +212,9 @@ body {
 }
 
 .error-message {
-    background: #fee;
-    color: #c53030;
-    border: 1px solid #fc8181;
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+    border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
 .error-message::before {
@@ -235,9 +223,9 @@ body {
 }
 
 .success-message {
-    background: #e6ffed;
-    color: #22543d;
-    border: 1px solid #68d391;
+    background: rgba(76, 175, 80, 0.1);
+    color: #81c784;
+    border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .success-message::before {
@@ -249,19 +237,17 @@ body {
 .auth-button {
     width: 100%;
     padding: 12px 20px;
-    /* Reduced padding */
     font-size: 14px;
-    /* Reduced from 16px */
     font-weight: 600;
     color: #ffffff;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(to right, #4285f4, #34a853);
     border: none;
-    border-radius: 8px;
+    border-radius: 24px;
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 2px 8px rgba(66, 133, 244, 0.4);
 }
 
 .auth-button::before {
@@ -281,7 +267,7 @@ body {
 
 .auth-button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 15px rgba(102, 126, 234, 0.5);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.6);
 }
 
 .auth-button:active {
@@ -314,22 +300,20 @@ body {
 
 /* Secondary Button */
 .secondary-button {
-    background: #e2e8f0;
-    color: #2d3748;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(to right, #607d8b, #455a64);
+    color: #fff;
+    box-shadow: none;
     margin-top: 10px;
-    /* Reduced margin */
 }
 
 .secondary-button:hover {
-    background: #cbd5e0;
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(69, 90, 100, 0.35);
 }
 
 /* Logout Button */
 .logout-button {
     background: linear-gradient(135deg, #f56565 0%, #c53030 100%);
-    box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
+    box-shadow: 0 2px 8px rgba(244, 67, 54, 0.4);
 }
 
 .logout-button:hover {
@@ -340,51 +324,46 @@ body {
 .auth-footer {
     text-align: center;
     padding-top: 16px;
-    /* Reduced padding */
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #333;
 }
 
 .auth-footer p {
     font-size: 12px;
-    /* Reduced from 14px */
-    color: #718096;
+    color: #aaa;
 }
 
 .auth-footer a {
-    color: #667eea;
+    color: #4285f4;
     text-decoration: none;
     font-weight: 600;
     transition: color 0.3s ease;
 }
 
 .auth-footer a:hover {
-    color: #764ba2;
+    color: #34a853;
     text-decoration: underline;
 }
 
 /* Auth Info */
 .auth-info {
     margin-top: 16px;
-    /* Reduced margin */
     padding: 12px;
-    /* Reduced padding */
-    background: rgba(102, 126, 234, 0.1);
+    background: rgba(66, 133, 244, 0.1);
     border-radius: 8px;
     display: flex;
     align-items: center;
     gap: 10px;
+    border: 1px solid rgba(66, 133, 244, 0.2);
 }
 
 .auth-info i {
-    color: #667eea;
+    color: #4285f4;
     font-size: 16px;
-    /* Reduced from 20px */
 }
 
 .auth-info p {
     font-size: 11px;
-    /* Reduced from 13px */
-    color: #4a5568;
+    color: #cfd8dc;
     margin: 0;
 }
 
@@ -395,13 +374,11 @@ body {
 
 .logout-icon {
     margin-bottom: 20px;
-    /* Reduced margin */
 }
 
 .logout-icon i {
     font-size: 56px;
-    /* Reduced from 72px */
-    color: #f56565;
+    color: #f44336;
     animation: fadeInScale 0.5s ease-out;
 }
 
@@ -419,19 +396,15 @@ body {
 
 .logout-content h2 {
     font-size: 20px;
-    /* Reduced from 24px */
     font-weight: 700;
-    color: #1a202c;
+    color: #e0e0e0;
     margin-bottom: 8px;
-    /* Reduced margin */
 }
 
 .logout-description {
     font-size: 13px;
-    /* Reduced from 15px */
-    color: #718096;
+    color: #aaa;
     margin-bottom: 24px;
-    /* Reduced margin */
 }
 
 .logout-actions {
@@ -456,6 +429,6 @@ body {
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
-    outline: 2px solid #667eea;
+    outline: 2px solid #4285f4;
     outline-offset: 2px;
 }

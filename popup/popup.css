@@ -158,15 +158,18 @@ h4 {
     display: flex;
     justify-content: space-between;
     gap: 20px;
+    padding: 0 18px;
     margin-bottom: 10px;
+    box-sizing: border-box;
 }
 
 .speedometer-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 48%;
-    flex-shrink: 0;
+    flex: 1;
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 .meter-title {
@@ -206,12 +209,14 @@ h4 {
 .promo-close {
     position: absolute;
     top: 8px;
-    right: 12px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 18px;
-    line-height: 1;
-    font-weight: bold;
-    cursor: pointer;
+    .speedometer-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+        flex-shrink: 1;
+    }
     transition: color 0.2s ease;
     z-index: 10;
     width: 24px;
