@@ -1,3 +1,6 @@
+## [1.2.9] - 2026-02-28
+- minor css upgrade
+
 ## [1.2.8] - 2026-02-08
 - decouple migration
 
