@@ -1,3 +1,6 @@
+## [1.3.1] - 2026-03-12
+- add log end point changes
+
 ## [1.3.0] - 2026-03-12
 - new feedback flow update
 
