@@ -1,3 +1,6 @@
+## [1.3.0] - 2026-03-12
+- new feedback flow update
+
 ## [1.2.9] - 2026-02-28
 - minor css upgrade
 
