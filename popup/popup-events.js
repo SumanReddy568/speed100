@@ -1,6 +1,8 @@
 /**
  * Event Handlers and Listeners
  * Handles user interactions, messaging, and collapsible sections
+ *
+ * Feedback logic is delegated to window.FeedbackService (popup-feedback-service.js).
  */
 
 window.PopupEvents = {
@@ -18,209 +20,15 @@ window.PopupEvents = {
   },
 
   async checkFeedbackStatus() {
-    const { elements, state } = window.PopupApp;
-    if (!elements.feedbackRatingContainer) return;
-
-    try {
-      // Get user info from storage
-      const result = await new Promise((resolve) =>
-        chrome.storage.local.get(
-          ["user_id", "user_email", "user_hash"],
-          resolve,
-        ),
-      );
-
-      const userId = result.user_id || result.user_email || "anonymous";
-
-      if (userId === "anonymous") {
-        // If anonymous user, show feedback buttons
-        elements.feedbackRatingContainer.style.display = "block";
-        return;
-      }
-
-      // Check feedback status via API
-      const response = await fetch(
-        `https://feedback-collector.sumanreddy568.workers.dev/check-feedback?userId=${encodeURIComponent(userId)}`,
-        {
-          method: "GET",
-          mode: "cors",
-          cache: "no-cache",
-          credentials: "omit",
-          headers: {
-            Accept: "application/json",
-          },
-        },
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-
-        if (data.hasSubmittedFeedback) {
-          elements.feedbackRatingContainer.style.display = "none";
-        } else {
-          elements.feedbackRatingContainer.style.display = "block";
-        }
-      } else {
-        // If API fails, show feedback buttons as fallback
-        elements.feedbackRatingContainer.style.display = "block";
-      }
-    } catch (error) {
-      console.warn("Failed to check feedback status:", error);
-      // If error, show feedback buttons as fallback
-      elements.feedbackRatingContainer.style.display = "block";
-    }
+    return window.FeedbackService.checkFeedbackStatus();
   },
 
   setupFeedbackHandlers() {
-    const { elements, state } = window.PopupApp;
-    if (!elements.thumbsUp || !elements.thumbsDown || !elements.feedbackModal)
-      return;
-
-    // Thumbs up/down handlers (from main page)
-    elements.thumbsUp.addEventListener("click", () => {
-      this.handleRatingClick(
-        "positive",
-        "What did you like about your speed test?",
-      );
-    });
-
-    elements.thumbsDown.addEventListener("click", () => {
-      this.handleRatingClick(
-        "negative",
-        "What issues did you experience with your speed test?",
-      );
-    });
-
-    // Close modal
-    elements.feedbackClose.addEventListener("click", () => {
-      elements.feedbackModal.style.display = "none";
-    });
-
-    // Outside click closes modal
-    window.addEventListener("click", (event) => {
-      if (event.target === elements.feedbackModal) {
-        elements.feedbackModal.style.display = "none";
-      }
-    });
-
-    // Submit feedback
-    elements.submitFeedback.addEventListener("click", async () => {
-      const feedback = elements.feedbackText.value.trim();
-      if (!feedback) {
-        elements.feedbackStatus.textContent =
-          "Please enter a message before submitting.";
-        elements.feedbackStatus.style.color = "#dc3545";
-        return;
-      }
-
-      elements.submitFeedback.disabled = true;
-      elements.feedbackStatus.textContent = "Sending...";
-      elements.feedbackStatus.style.color = "#666";
-
-      // Collect userId (from storage or fallback)
-      let userInfo = {
-        userId: "anonymous",
-        email: null,
-        userHash: null,
-      };
-
-      try {
-        const result = await new Promise((resolve) =>
-          chrome.storage.local.get(
-            ["user_id", "user_email", "user_hash"],
-            resolve,
-          ),
-        );
-        userInfo = {
-          userId: result.user_id || result.user_email || "anonymous",
-          email: result.user_email || null,
-          userHash: result.user_hash || null,
-        };
-      } catch (e) {
-        console.warn("Failed to fetch user info for feedback:", e);
-      }
-
-      // Collect speed and network info (if available)
-      const info = state.networkInfoCache || {};
-      const payload = {
-        source: "speed100-extension",
-        userId: userInfo.userId,
-        userEmail: userInfo.email,
-        userHash: userInfo.userHash,
-        feedback,
-        rating: state.selectedRating,
-        downloadSpeed:
-          document.getElementById("download-speed")?.textContent || null,
-        uploadSpeed:
-          document.getElementById("upload-speed-display")?.textContent || null,
-        ping: info.ping || null,
-        jitter: info.jitter || null,
-        packetLoss: info.packetLoss || null,
-        ipAddress: info.ipAddress || null,
-        isp: info.isp || null,
-        location: info.location || null,
-        server: info.serverInfo || null,
-        timestamp: new Date().toISOString(),
-      };
-
-      try {
-        const res = await fetch(
-          "https://feedback-collector.sumanreddy568.workers.dev/feedback/",
-          {
-            method: "POST",
-            mode: "cors",
-            cache: "no-cache",
-            credentials: "omit",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "*/*",
-              "Accept-Language": "en-US,en;q=0.9",
-              "Accept-Encoding": "gzip, deflate, br, zstd",
-            },
-            body: JSON.stringify(payload),
-          },
-        );
-        if (res.ok) {
-          state.feedbackSubmitted = true;
-          // Save feedback state to storage
-          chrome.storage.local.set({ feedbackSubmitted: true });
-          console.log("Feedback submitted successfully, marking as complete");
-
-          elements.feedbackStatus.textContent = "Thank you for your feedback!";
-          elements.feedbackStatus.style.color = "#28a745";
-
-          // Hide feedback rating container
-          elements.feedbackRatingContainer.style.display = "none";
-
-          setTimeout(() => {
-            elements.feedbackModal.style.display = "none";
-          }, 1500);
-        } else {
-          elements.feedbackStatus.textContent =
-            "Failed to send feedback. Please try again.";
-          elements.feedbackStatus.style.color = "#dc3545";
-        }
-      } catch (e) {
-        elements.feedbackStatus.textContent =
-          "Error sending feedback. Check your connection.";
-        elements.feedbackStatus.style.color = "#dc3545";
-      }
-      elements.submitFeedback.disabled = false;
-    });
+    return window.FeedbackService.setupFeedbackHandlers();
   },
 
   handleRatingClick(rating, promptText) {
-    const { elements, state } = window.PopupApp;
-    state.selectedRating = rating;
-
-    // Set the modal title and prompt
-    elements.feedbackPrompt.textContent = promptText;
-
-    // Show the modal
-    elements.feedbackModal.style.display = "block";
-    elements.feedbackText.focus();
-    elements.feedbackStatus.textContent = "";
-    elements.feedbackText.value = "";
+    return window.FeedbackService.handleRatingClick(rating, promptText);
   },
 
   setupSpeedTestHandlers() {
@@ -287,78 +95,7 @@ window.PopupEvents = {
   },
 
   async checkCanRunTest() {
-    try {
-      // Get user info from storage
-      const result = await new Promise((resolve) =>
-        chrome.storage.local.get(
-          [
-            "user_id",
-            "user_email",
-            "user_hash",
-            "hasRunFirstTest",
-            "feedbackSubmitted",
-          ],
-          resolve,
-        ),
-      );
-
-      const userId = result.user_id || result.user_email || "anonymous";
-      const hasRunFirstTest = result.hasRunFirstTest || false;
-
-      console.log("checkCanRunTest:", {
-        hasRunFirstTest,
-        userId,
-        localFeedbackSubmitted: result.feedbackSubmitted,
-      });
-
-      // If this is the very first test ever, allow it
-      if (!hasRunFirstTest) {
-        console.log("Allowing first test");
-        return true;
-      }
-
-      // If they've run a test before, check if feedback has been submitted
-      console.log("Must check feedback before allowing test");
-
-      // For anonymous users, check local storage
-      if (userId === "anonymous") {
-        const canRun = result.feedbackSubmitted || false;
-        console.log("Anonymous user, can run:", canRun);
-        return canRun;
-      }
-
-      // For registered users, check API
-      try {
-        const response = await fetch(
-          `https://feedback-collector.sumanreddy568.workers.dev/check-feedback?userId=${encodeURIComponent(userId)}`,
-          {
-            method: "GET",
-            mode: "cors",
-            cache: "no-cache",
-            credentials: "omit",
-            headers: {
-              Accept: "application/json",
-            },
-          },
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("API response:", data);
-          return data.hasSubmittedFeedback || false;
-        } else {
-          console.warn("API failed, falling back to local state");
-          return result.feedbackSubmitted || false;
-        }
-      } catch (apiError) {
-        console.warn("API error, falling back to local state:", apiError);
-        return result.feedbackSubmitted || false;
-      }
-    } catch (error) {
-      console.warn("Failed to check if can run test:", error);
-      // If everything fails, be safe and block the test
-      return false;
-    }
+    return window.FeedbackService.checkCanRunTest();
   },
 
   setupSettingsHandlers() {
@@ -597,8 +334,8 @@ window.PopupEvents = {
         const uploadMbps = (request.uploadSpeed || 0) / 1000000;
         window.PopupSpeedometer.update("download", downloadMbps);
         window.PopupSpeedometer.update("upload", uploadMbps);
-        if (request.networkInfo)
-          window.PopupNetwork.updateInfo(request.networkInfo);
+        if (request.networkInfo || request.bloat !== undefined)
+          window.PopupNetwork.updateInfo(request.networkInfo || { bloat: request.bloat });
         elements.testStatus.textContent = request.message || "Testing...";
       }
 

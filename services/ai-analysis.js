@@ -247,6 +247,24 @@ class NetworkAIAnalysis {
             severity: 'medium'
         });
 
+        if (result.bloat > 50) issues.push({
+            type: 'high_bufferbloat',
+            message: 'High bufferbloat may cause lag during downloads or uploads',
+            severity: 'medium'
+        });
+
+        if (result.networkInfo?.dnsLatency > 150) issues.push({
+            type: 'slow_dns',
+            message: 'Slow DNS resolution may delay website loading',
+            severity: 'low'
+        });
+
+        if (result.networkInfo?.stability < 80) issues.push({
+            type: 'low_stability',
+            message: 'Network stability is lower than optimal',
+            severity: 'medium'
+        });
+
         return issues;
     }
 
@@ -270,6 +288,18 @@ class NetworkAIAnalysis {
         if (result.networkInfo?.latency < 50) strengths.push({
             type: 'low_latency',
             message: 'Low latency ensures smooth online gaming and real-time interactions',
+            severity: 'low'
+        });
+
+        if (result.bloat < 20) strengths.push({
+            type: 'low_bufferbloat',
+            message: 'Excellent bufferbloat ensures consistent performance under load',
+            severity: 'low'
+        });
+
+        if (result.networkInfo?.stability > 95) strengths.push({
+            type: 'high_stability',
+            message: 'Network connection is highly stable',
             severity: 'low'
         });
 
@@ -751,6 +781,9 @@ class NetworkAIAnalysis {
         const downloadMbps = (result?.downloadSpeed || 0) / 1000000;
         const uploadMbps = (result?.uploadSpeed || 0) / 1000000;
         const latency = result?.networkInfo?.latency;
+        const bloat = result?.bloat || 0;
+        const dnsSpeed = result?.networkInfo?.dnsLatency || 0;
+        const stability = result?.networkInfo?.stability || 0;
         const ratingLabel = this.getRatingLabel(analysis?.performance?.rating?.overall);
 
         const issuesList = (analysis?.performance?.issues || []);
@@ -830,7 +863,10 @@ class NetworkAIAnalysis {
             'Context:',
             `download_mbps: ${downloadMbps.toFixed(2)}`,
             `upload_mbps: ${uploadMbps.toFixed(2)}`,
-            `latency_ms: ${typeof latency === 'number' ? latency : 'unknown'}`,
+            `latency_ms: ${typeof latency === 'number' ? latency : (typeof latency === 'string' ? latency.replace(' ms', '') : 'unknown')}`,
+            `bufferbloat_ms: ${bloat}`,
+            `dns_latency_ms: ${dnsSpeed}`,
+            `network_stability_score: ${stability}/100`,
             `overall_rating: ${ratingLabel}`,
             `historical_note: ${historicalNote}`,
             `prediction_note: ${predictionNote}`,

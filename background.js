@@ -58,6 +58,7 @@ function sendProgress(message, speeds, networkInfo = null) {
         message: message,
         downloadSpeed: speeds?.downloadSpeed || 0,
         uploadSpeed: speeds?.uploadSpeed || 0,
+        bloat: speeds?.bloat || 0,
         networkInfo: networkInfo
     }).catch(() => {
         // Silent catch for when popup is closed
@@ -101,7 +102,8 @@ async function runSpeedTest(isAutomated = false) {
             updateBadge(downloadMbps);
             sendProgress('Testing in progress...', {
                 downloadSpeed: speeds.downloadSpeed,
-                uploadSpeed: speeds.uploadSpeed
+                uploadSpeed: speeds.uploadSpeed,
+                bloat: speeds.bloat
             });
         });
 
@@ -125,9 +127,13 @@ async function runSpeedTest(isAutomated = false) {
         await speedTest.testUploadSpeed();
         log('info', 'Upload test finished', { speed: speedTest.uploadSpeed / 1000000 });
 
+        // Update network info with measured bloat
+        networkInfo.bloat = speedTest.bloat;
+
         lastTestResult = {
             downloadSpeed: speedTest.downloadSpeed,
             uploadSpeed: speedTest.uploadSpeed,
+            bloat: speedTest.bloat,
             networkInfo: networkInfo,
             timestamp: Date.now()
         };

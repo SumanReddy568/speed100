@@ -141,6 +141,37 @@
                     <span class="metric-unit">%</span>
                 </div>
             </div>
+            <!-- New Metrics Row -->
+            <div class="metric-card">
+                <div class="metric-header">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span class="metric-label">Bloat</span>
+                </div>
+                <div class="metric-value-container">
+                    <span id="bloat-value" class="metric-value">-</span>
+                    <span class="metric-unit">ms</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <i class="fas fa-search-plus"></i>
+                    <span class="metric-label">DNS</span>
+                </div>
+                <div class="metric-value-container">
+                    <span id="dns-speed" class="metric-value">-</span>
+                    <span class="metric-unit">ms</span>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-header">
+                    <i class="fas fa-heartbeat"></i>
+                    <span class="metric-label">Stability</span>
+                </div>
+                <div class="metric-value-container">
+                    <span id="stability-value" class="metric-value">-</span>
+                    <span class="metric-unit">%</span>
+                </div>
+            </div>
         </div>
 
         <!-- Add Load Test button next to main speed test button -->
@@ -505,6 +536,7 @@
     <script src="popup-charts.js"></script>
     <script src="popup-ai.js"></script>
     <script src="popup-network.js"></script>
+    <script src="popup-feedback-service.js"></script>
     <script src="popup-events.js"></script>
     <script src="popup.js"></script>
     <script src="popup-auth-check.js"></script>

@@ -10,7 +10,8 @@ window.PopupNetwork = {
             'connection-type', 'network-name', 'latency', 'isp',
             'location-country', 'location-city', 'location-region',
             'location-timezone', 'server-name', 'server-organization',
-            'detection-status', 'ping-value', 'jitter-value', 'loss-value'
+            'detection-status', 'ping-value', 'jitter-value', 'loss-value',
+            'bloat-value', 'dns-speed', 'stability-value'
         ];
 
         networkInfoIds.forEach(id => {
@@ -33,6 +34,9 @@ window.PopupNetwork = {
             ping: '-',
             jitter: '-',
             packetLoss: '-',
+            dnsLatency: '-',
+            stability: '-',
+            bloat: '-',
             isp: '-',
             location: { country: '-', city: '-', region: '-', timezone: '-' },
             serverInfo: { name: '-', organization: '-' },
@@ -51,6 +55,9 @@ window.PopupNetwork = {
                 ping: (info.ping !== undefined && info.ping !== null) ? info.ping : (info.latency ? info.latency.replace(' ms', '') : '-'),
                 jitter: (info.jitter !== undefined && info.jitter !== null) ? info.jitter : '-',
                 packetLoss: (info.packetLoss !== undefined && info.packetLoss !== null) ? info.packetLoss : '-',
+                dnsLatency: (info.dnsLatency !== undefined && info.dnsLatency !== null) ? info.dnsLatency : '-',
+                stability: (info.stability !== undefined && info.stability !== null) ? info.stability : '-',
+                bloat: (info.bloat !== undefined && info.bloat !== null) ? info.bloat : '-',
                 lastUpdate: Date.now()
             };
         }
@@ -70,6 +77,9 @@ window.PopupNetwork = {
         if (elements.pingValue) elements.pingValue.textContent = (info.ping !== undefined && info.ping !== null && info.ping !== '-') ? info.ping : '-';
         if (elements.jitterValue) elements.jitterValue.textContent = (info.jitter !== undefined && info.jitter !== null && info.jitter !== '-') ? info.jitter : '-';
         if (elements.lossValue) elements.lossValue.textContent = (info.packetLoss !== undefined && info.packetLoss !== null && info.packetLoss !== '-') ? info.packetLoss : '-';
+        if (elements.dnsSpeed) elements.dnsSpeed.textContent = (info.dnsLatency !== undefined && info.dnsLatency !== null && info.dnsLatency !== '-') ? info.dnsLatency : '-';
+        if (elements.stabilityValue) elements.stabilityValue.textContent = (info.stability !== undefined && info.stability !== null && info.stability !== '-') ? info.stability : '-';
+        if (elements.bloatValue) elements.bloatValue.textContent = (info.bloat !== undefined && info.bloat !== null && info.bloat !== '-') ? info.bloat : '-';
 
         if (info.location) {
             elements.locationCountry.textContent = info.location.country || '-';

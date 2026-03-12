@@ -11,9 +11,12 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         signalStrength: '-',
         connectionType: '-',
         latency: '-',
-        ping: '-',
-        jitter: '-',
-        packetLoss: '-',
+        ping: 0,
+        jitter: 0,
+        packetLoss: 0,
+        dnsLatency: 0,
+        stability: 100,
+        bloat: 0,
         networkName: '-',
         location: {
             country: '-',
@@ -30,6 +33,18 @@ SpeedTest.prototype.getNetworkInfo = async function () {
     };
 
     try {
+        // If we have previously measured good latency metrics, seed with those
+        if (this._lastGoodLatencyMetrics) {
+            const m = this._lastGoodLatencyMetrics;
+            if (typeof m.latency !== 'undefined') networkInfo.latency = m.latency;
+            if (typeof m.ping === 'number') networkInfo.ping = m.ping;
+            if (typeof m.jitter === 'number') networkInfo.jitter = m.jitter;
+            if (typeof m.packetLoss === 'number') networkInfo.packetLoss = m.packetLoss;
+            if (typeof m.dnsLatency === 'number') networkInfo.dnsLatency = m.dnsLatency;
+            if (typeof m.stability === 'number') networkInfo.stability = m.stability;
+            if (typeof m.bloat === 'number') networkInfo.bloat = m.bloat;
+        }
+
         const hasNetworkInformationApi =
             typeof navigator !== 'undefined' &&
             navigator.connection &&
@@ -84,12 +99,25 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         }
 
         const latencyResult = await this.testLatency();
+        let hasFreshLatencyMetrics = false;
         if (latencyResult.latency !== 'Unavailable') {
             networkInfo.latency = latencyResult.latency;
             networkInfo.ping = latencyResult.ping;
             networkInfo.jitter = latencyResult.jitter;
             networkInfo.packetLoss = latencyResult.loss;
             networkInfo.serverInfo = latencyResult.serverInfo;
+            hasFreshLatencyMetrics = true;
+
+            // Calculate stability score (0-100)
+            // Penalty for loss (very high) and jitter (moderate)
+            const currentLoss = parseFloat(networkInfo.packetLoss) || 0;
+            const currentJitter = parseFloat(networkInfo.jitter) || 0;
+            const lossPenalty = currentLoss * 10;
+            const jitterPenalty = currentJitter * 0.5;
+            networkInfo.stability = Math.max(0, Math.min(100, Math.round(100 - lossPenalty - jitterPenalty)));
+            
+            // Initial bloat estimation 
+            networkInfo.bloat = Math.round(currentJitter * 1.5);
         }
 
         try {
@@ -99,15 +127,31 @@ SpeedTest.prototype.getNetworkInfo = async function () {
                 '';
 
             if (hostname) {
+                const dnsStart = performance.now();
                 const dnsResponse = await fetch('https://dns.google/resolve?name=' + hostname);
+                const dnsEnd = performance.now();
                 if (dnsResponse.ok) {
                     networkInfo.dns = 'Google DNS';
+                    networkInfo.dnsLatency = Math.round(dnsEnd - dnsStart);
                 }
             } else {
                 console.warn('DNS detection skipped: hostname is unavailable in this context.');
             }
         } catch (dnsError) {
             console.warn("DNS detection failed:", dnsError.message);
+        }
+
+        // If we successfully measured latency this run, persist it as "last good"
+        if (hasFreshLatencyMetrics) {
+            this._lastGoodLatencyMetrics = {
+                latency: networkInfo.latency,
+                ping: networkInfo.ping,
+                jitter: networkInfo.jitter,
+                packetLoss: networkInfo.packetLoss,
+                dnsLatency: networkInfo.dnsLatency,
+                stability: networkInfo.stability,
+                bloat: networkInfo.bloat
+            };
         }
 
         if (typeof RTCPeerConnection !== 'undefined') {

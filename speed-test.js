@@ -3,8 +3,16 @@ class SpeedTest {
         this.downloadSpeed = 0;
         this.uploadSpeed = 0;
         this.testRunning = false;
-        this.testFileSize = 50 * 1024 * 1024; // Increased to 50MB per stream
-        this.testFileUrl = 'https://speed.cloudflare.com/__down?bytes=';
+        this.testFileSize = 20 * 1024 * 1024; // 20MB per stream to reduce 429s
+
+        // Primary: Cloudflare speed test endpoint (supports ?bytes=)
+        // Fallback: Hetzner 100MB file for when Cloudflare is rate-limited/unreachable
+        this.downloadEndpoints = [
+            { type: 'cloudflare' },
+            { type: 'hetzner' }
+        ];
+        this.currentDownloadEndpointIndex = 0;
+
         this.uploadEndpoint = 'https://speed.cloudflare.com/__up';
         this.progressCallback = null;
         this.lastUpdateTime = 0;
@@ -12,8 +20,37 @@ class SpeedTest {
         this.sampleInterval = 200; // Update every 200ms
         this.uploadChunkSize = 4 * 1024 * 1024; // 4MB chunks for parallel upload
         this.minTestDuration = 3000;
-        this.concurrentStreams = 4; // Use 4 parallel streams to saturate pipe
+        this.concurrentStreams = 2; // Further reduced to avoid 429 on strict networks
         this.warmupDuration = 1500; // Ignore first 1.5s for TCP slow start
+        this.bloat = 0;
+        this.baselinePing = 0;
+    }
+
+    // Build a download URL for the current endpoint.
+    // For Cloudflare, we request a specific byte size; for Hetzner we use a fixed file.
+    getCurrentDownloadUrl(bytes, id = 0, offset = 0) {
+        const endpoint = this.downloadEndpoints[this.currentDownloadEndpointIndex] || this.downloadEndpoints[0];
+        const nonce = `${Date.now()}_${id}_${offset}`;
+
+        if (endpoint.type === 'cloudflare') {
+            return `https://speed.cloudflare.com/__down?bytes=${bytes}&t=${nonce}`;
+        }
+
+        if (endpoint.type === 'hetzner') {
+            // Fixed-size file; ignore `bytes`, just bust cache
+            return `https://speed.hetzner.de/100MB.bin?t=${nonce}`;
+        }
+
+        // Fallback (shouldn't normally be hit)
+        return `https://speed.cloudflare.com/__down?bytes=${bytes}&t=${nonce}`;
+    }
+
+    switchToNextDownloadEndpoint() {
+        if (this.currentDownloadEndpointIndex < this.downloadEndpoints.length - 1) {
+            this.currentDownloadEndpointIndex += 1;
+            return true;
+        }
+        return false;
     }
 
     setProgressCallback(callback) {
@@ -27,14 +64,57 @@ class SpeedTest {
         this.lastUpdateTime = startTime;
 
         const streamDownload = async (id) => {
+            // Stagger starts to avoid burst 429s
+            await new Promise(r => setTimeout(r, id * 300));
+            
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), this.testDuration + 3000);
 
-                const response = await fetch(`${this.testFileUrl}${this.testFileSize}&t=${Date.now()}_${id}`, {
+                let response = await fetch(this.getCurrentDownloadUrl(this.testFileSize, id), {
                     signal: controller.signal,
                     mode: 'cors'
                 });
+
+                // Improved 429 handling: retries + optional fallback endpoint
+                let retryCount = 0;
+                const maxRetries = 5;
+                while (response.status === 429 && retryCount < maxRetries) {
+                    retryCount++;
+                    const waitTime = retryCount * 2000;
+                    console.warn(`Stream ${id} rate limited (429) on endpoint index ${this.currentDownloadEndpointIndex}, retry ${retryCount}/${maxRetries} in ${waitTime}ms...`);
+                    await new Promise(r => setTimeout(r, waitTime));
+
+                    // Stop if test was aborted while waiting
+                    if (controller.signal.aborted) {
+                        clearTimeout(timeout);
+                        return;
+                    }
+
+                    response = await fetch(this.getCurrentDownloadUrl(this.testFileSize, id), {
+                        signal: controller.signal,
+                        mode: 'cors'
+                    });
+                }
+
+                // If still rate-limited after retries, try switching to a fallback endpoint once
+                if (response.status === 429) {
+                    const switched = this.switchToNextDownloadEndpoint();
+                    if (switched) {
+                        console.warn(`Stream ${id} still rate limited (429); switching to fallback endpoint index ${this.currentDownloadEndpointIndex}...`);
+                        response = await fetch(this.getCurrentDownloadUrl(this.testFileSize, id), {
+                            signal: controller.signal,
+                            mode: 'cors'
+                        });
+                    }
+
+                    // If we are still rate-limited (or no fallback), skip this stream instead of failing the whole test
+                    if (response.status === 429) {
+                        console.warn(`Stream ${id} permanently rate limited (429) after retries${switched ? ' and fallback endpoint' : ''}, skipping stream.`);
+                        clearTimeout(timeout);
+                        return;
+                    }
+                }
 
                 if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
 
@@ -60,8 +140,17 @@ class SpeedTest {
                             if (this.progressCallback) {
                                 this.progressCallback({
                                     downloadSpeed: this.downloadSpeed,
-                                    uploadSpeed: this.uploadSpeed
+                                    uploadSpeed: this.uploadSpeed,
+                                    bloat: this.bloat
                                 });
+                            }
+
+                            // Periodically measure bloat during test window (deterministic every ~2s)
+                            if (elapsedSinceStart > 2000 && elapsedSinceStart < 8500) {
+                                if (!this._lastBloatTime || currentTime - this._lastBloatTime > 3000) {
+                                    this._lastBloatTime = currentTime;
+                                    this.measureBloat();
+                                }
                             }
                         }
 
@@ -96,6 +185,8 @@ class SpeedTest {
         this.lastUpdateTime = startTime;
 
         const streamUpload = async (id) => {
+            // Stagger starts
+            await new Promise(r => setTimeout(r, id * 300));
             while (performance.now() - startTime < this.testDuration) {
                 try {
                     const testData = this.generateTestData(this.uploadChunkSize);
@@ -131,8 +222,18 @@ class SpeedTest {
                             if (this.progressCallback) {
                                 this.progressCallback({
                                     downloadSpeed: this.downloadSpeed,
-                                    uploadSpeed: this.uploadSpeed
+                                    uploadSpeed: this.uploadSpeed,
+                                    bloat: this.bloat
                                 });
+                            }
+
+                            // Periodically measure bloat during test window
+                            const now = performance.now();
+                            if (elapsedSinceStart > 2000 && elapsedSinceStart < 8500) {
+                                if (!this._lastBloatTime || now - this._lastBloatTime > 3000) {
+                                    this._lastBloatTime = now;
+                                    this.measureBloat();
+                                }
                             }
                         }
                     }
@@ -167,7 +268,7 @@ class SpeedTest {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout per chunk
 
-                const response = await fetch(`${this.testFileUrl}${currentChunkSize}&t=${Date.now()}_${bytesReceivedTotal}`, {
+                const response = await fetch(this.getCurrentDownloadUrl(currentChunkSize, 0, bytesReceivedTotal), {
                     signal: controller.signal,
                     mode: 'cors'
                 });
@@ -216,8 +317,8 @@ class SpeedTest {
                 const currentRequestSize = Math.min(chunkSize, totalBytes - bytesReceivedTotal);
                 const controller = new AbortController();
 
-                // Add a unique timestamp and chunk offset to bypass caching and potentially WAF rules
-                const url = `${this.testFileUrl}${currentRequestSize}&t=${Date.now()}_${bytesReceivedTotal}`;
+                // Use same URL builder as core download test, keyed by current endpoint
+                const url = this.getCurrentDownloadUrl(currentRequestSize, 0, bytesReceivedTotal);
 
                 const response = await fetch(url, {
                     signal: controller.signal,
@@ -291,6 +392,31 @@ class SpeedTest {
         return data;
     }
 
+    async measureBloat() {
+        if (!this.baselinePing || this._bloatBlocked) return;
+        
+        try {
+            const start = performance.now();
+            const response = await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { 
+                mode: 'cors', 
+                cache: 'no-store' 
+            });
+
+            if (response.status === 429) {
+                this._bloatBlocked = true;
+                return;
+            }
+            const end = performance.now();
+            const currentPing = end - start;
+            const currentBloat = Math.max(0, currentPing - this.baselinePing);
+            
+            // Smoothed bloat calculation
+            this.bloat = Math.round((this.bloat * 0.7) + (currentBloat * 0.3));
+        } catch (e) {
+            // Ignore bloat measurement errors
+        }
+    }
+
     calculateMedian(values) {
         if (values.length === 0) return 0;
 
@@ -317,6 +443,7 @@ class SpeedTest {
         this.uploadSpeed = 0;
 
         this.testRunning = true;
+        this._bloatBlocked = false;
 
         try {
             // First check connectivity
@@ -338,6 +465,9 @@ class SpeedTest {
             const networkInfo = await this.getNetworkInfo();
 
             // Run speed tests
+            this.baselinePing = networkInfo.ping || 0;
+            this.bloat = 0;
+            
             await this.testDownloadSpeed();
 
             if (this.downloadSpeed > 0) {
