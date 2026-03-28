@@ -1,3 +1,6 @@
+## [1.3.2] - 2026-03-28
+- feat: Implement a new network diagnostics service with significantly improved accuracy for latency, ping, jitter, packet loss, and bloat measurements.
+
 ## [1.3.1] - 2026-03-12
 - add log end point changes
 
