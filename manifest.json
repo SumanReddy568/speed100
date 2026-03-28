@@ -12,6 +12,7 @@
   "host_permissions": [
     "https://speed.cloudflare.com/*",
     "https://api.ipify.org/*",
+    "https://ipapi.co/*",
     "https://ipinfo.io/*",
     "https://ipwho.is/*",
     "https://openrouter.ai/*",

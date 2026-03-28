@@ -23,6 +23,14 @@ window.PopupNetwork = {
     updateInfo(info) {
         const { state, elements } = window.PopupApp;
 
+        const setTextPreserveOnPlaceholder = (el, next, placeholder = '-') => {
+            if (!el) return;
+            const nextStr = (next === undefined || next === null) ? placeholder : String(next);
+            // Never overwrite an already-shown value with a placeholder.
+            if (nextStr === placeholder && el.textContent && el.textContent !== placeholder) return;
+            el.textContent = nextStr;
+        };
+
         const emptyValues = {
             ipAddress: '-',
             localAddress: '-',
@@ -65,27 +73,34 @@ window.PopupNetwork = {
         state.networkInfoCache = info;
 
         // UI Updates
-        elements.ipAddress.textContent = info.ipAddress || '-';
-        elements.localAddress.textContent = info.localAddress || '-';
-        elements.dns.textContent = info.dns || '-';
-        elements.signalStrength.textContent = info.signalStrength || '-';
-        elements.connectionType.textContent = info.connectionType || '-';
-        elements.networkName.textContent = info.networkName || '-';
-        elements.latency.textContent = info.latency || '-';
-        elements.isp.textContent = info.isp || '-';
+        setTextPreserveOnPlaceholder(elements.ipAddress, info.ipAddress);
+        setTextPreserveOnPlaceholder(elements.localAddress, info.localAddress);
+        setTextPreserveOnPlaceholder(elements.dns, info.dns);
+        setTextPreserveOnPlaceholder(elements.signalStrength, info.signalStrength);
+        setTextPreserveOnPlaceholder(elements.connectionType, info.connectionType);
+        setTextPreserveOnPlaceholder(elements.networkName, info.networkName);
+        setTextPreserveOnPlaceholder(elements.latency, info.latency);
+        setTextPreserveOnPlaceholder(elements.isp, info.isp);
 
-        if (elements.pingValue) elements.pingValue.textContent = (info.ping !== undefined && info.ping !== null && info.ping !== '-') ? info.ping : '-';
-        if (elements.jitterValue) elements.jitterValue.textContent = (info.jitter !== undefined && info.jitter !== null && info.jitter !== '-') ? info.jitter : '-';
-        if (elements.lossValue) elements.lossValue.textContent = (info.packetLoss !== undefined && info.packetLoss !== null && info.packetLoss !== '-') ? info.packetLoss : '-';
-        if (elements.dnsSpeed) elements.dnsSpeed.textContent = (info.dnsLatency !== undefined && info.dnsLatency !== null && info.dnsLatency !== '-') ? info.dnsLatency : '-';
-        if (elements.stabilityValue) elements.stabilityValue.textContent = (info.stability !== undefined && info.stability !== null && info.stability !== '-') ? info.stability : '-';
-        if (elements.bloatValue) elements.bloatValue.textContent = (info.bloat !== undefined && info.bloat !== null && info.bloat !== '-') ? info.bloat : '-';
+        const pingNext = (info.ping !== undefined && info.ping !== null && info.ping !== '-') ? info.ping : '-';
+        const jitterNext = (info.jitter !== undefined && info.jitter !== null && info.jitter !== '-') ? info.jitter : '-';
+        const lossNext = (info.packetLoss !== undefined && info.packetLoss !== null && info.packetLoss !== '-') ? info.packetLoss : '-';
+        const dnsLatencyNext = (info.dnsLatency !== undefined && info.dnsLatency !== null && info.dnsLatency !== '-') ? info.dnsLatency : '-';
+        const stabilityNext = (info.stability !== undefined && info.stability !== null && info.stability !== '-') ? info.stability : '-';
+        const bloatNext = (info.bloat !== undefined && info.bloat !== null && info.bloat !== '-') ? info.bloat : '-';
+
+        setTextPreserveOnPlaceholder(elements.pingValue, pingNext);
+        setTextPreserveOnPlaceholder(elements.jitterValue, jitterNext);
+        setTextPreserveOnPlaceholder(elements.lossValue, lossNext);
+        setTextPreserveOnPlaceholder(elements.dnsSpeed, dnsLatencyNext);
+        setTextPreserveOnPlaceholder(elements.stabilityValue, stabilityNext);
+        setTextPreserveOnPlaceholder(elements.bloatValue, bloatNext);
 
         if (info.location) {
-            elements.locationCountry.textContent = info.location.country || '-';
-            elements.locationCity.textContent = info.location.city || '-';
-            elements.locationRegion.textContent = info.location.region || '-';
-            elements.locationTimezone.textContent = info.location.timezone || '-';
+            setTextPreserveOnPlaceholder(elements.locationCountry, info.location.country);
+            setTextPreserveOnPlaceholder(elements.locationCity, info.location.city);
+            setTextPreserveOnPlaceholder(elements.locationRegion, info.location.region);
+            setTextPreserveOnPlaceholder(elements.locationTimezone, info.location.timezone);
         }
 
         if (info.serverInfo) {
@@ -126,6 +141,28 @@ window.PopupNetwork = {
                 window.PopupSpeedometer.update('download', downloadSpeedMbps);
                 window.PopupSpeedometer.update('upload', uploadSpeedMbps);
                 this.updateInfo(response.networkInfo || state.networkInfoCache);
+
+                // If background didn't populate geo/ISP (common when fetches fail),
+                // fetch it in the popup context so Location Details can show.
+                const cached = state.networkInfoCache;
+                const hasLocation =
+                    cached?.location &&
+                    (cached.location.country && cached.location.country !== '-' ||
+                     cached.location.city && cached.location.city !== '-' ||
+                     cached.location.region && cached.location.region !== '-' ||
+                     cached.location.timezone && cached.location.timezone !== '-');
+
+                if (!hasLocation && typeof window.SpeedTest === 'function') {
+                    (async () => {
+                        try {
+                            const st = new window.SpeedTest();
+                            const live = await st.getNetworkInfo();
+                            if (live) this.updateInfo(live);
+                        } catch (e) {
+                            // non-fatal
+                        }
+                    })();
+                }
 
                 window.PopupApp.elements.testStatus.textContent = response.timestamp ?
                     'Last test: ' + new Date(response.timestamp).toLocaleTimeString() :
