@@ -147,6 +147,14 @@ window.PopupApp = {
       dnsSpeed: document.getElementById("dns-speed"),
       stabilityValue: document.getElementById("stability-value"),
       serviceStatusList: document.getElementById("service-status-list"),
+
+      // Update modal elements
+      updateModal: document.getElementById("update-modal"),
+      updateClose: document.getElementById("update-close"),
+      currentVersionNumber: document.getElementById("current-version-number"),
+      latestVersionNumber: document.getElementById("latest-version-number"),
+      remindLaterBtn: document.getElementById("remind-later-btn"),
+      updateNowBtn: document.getElementById("update-now-btn"),
     };
   },
 

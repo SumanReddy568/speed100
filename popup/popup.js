@@ -74,6 +74,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // Setup visual observers and handlers
   window.PopupCharts.initializeGraphObserver();
   window.PopupEvents.initialize();
+  
+  // Initialize version check
+  if (window.VersionService) {
+      window.VersionService.initialize();
+  }
 
   logger.info("Popup initialized");
 });

@@ -144,6 +144,30 @@ function trackSectionExpand(sectionId, meta = {}) {
     });
 }
 
+// Track update modal show
+function trackUpdateModalShow(currentVersion, latestVersion, meta = {}) {
+    return track("update_modal_show", {
+        feature: "version_check",
+        meta: { currentVersion, latestVersion, ...meta }
+    });
+}
+
+// Track remind later click
+function trackUpdateRemindLater(currentVersion, latestVersion, meta = {}) {
+    return track("update_click_remind_later", {
+        feature: "version_check",
+        meta: { currentVersion, latestVersion, ...meta }
+    });
+}
+
+// Track update now click
+function trackUpdateNowClick(currentVersion, latestVersion, meta = {}) {
+    return track("update_click_now", {
+        feature: "version_check",
+        meta: { currentVersion, latestVersion, ...meta }
+    });
+}
+
 // Track Rate Us click
 function trackRateUsClick(feature = "unknown", meta = {}) {
     return track("click_rate_us", {
@@ -184,6 +208,9 @@ if (typeof window !== 'undefined') {
         trackLoadTest,
         trackAIInsights,
         trackSectionExpand,
+        trackUpdateModalShow,
+        trackUpdateRemindLater,
+        trackUpdateNowClick,
         trackRateUsClick,
         trackAIAgentHubClick,
         trackDowndetectorClick,
@@ -201,6 +228,9 @@ if (typeof self !== 'undefined' && typeof window === 'undefined') {
         trackLoadTest,
         trackAIInsights,
         trackSectionExpand,
+        trackUpdateModalShow,
+        trackUpdateRemindLater,
+        trackUpdateNowClick,
         trackRateUsClick,
         trackAIAgentHubClick,
         trackDowndetectorClick,
