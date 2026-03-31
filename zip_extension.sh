@@ -85,6 +85,14 @@ zip -r "$ZIP_FILE" * \
     -x "CHANGELOG.md" \
     -x "PRIVACY_POLICY.md"
 
+# Notify analytics worker of the new version
+echo "Notifying analytics worker of new version $NEW_VERSION..."
+curl -X POST https://multi-product-analytics.sumanreddy568.workers.dev/api/latest-version \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer analytics-secret-key-2024" \
+     -d "{\"source\": \"speed100\", \"version\": \"$NEW_VERSION\", \"publish\": true}"
+echo "Notification sent."
+
 # Configure git
 git config --global user.name "GitHub Actions"
 git config --global user.email "actions@github.com"
