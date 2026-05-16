@@ -1,12 +1,8 @@
-/**
- * Feedback Service
- * Handles all feedback-related logic: checking feedback status,
- * submitting feedback, and managing the feedback modal UI.
- */
+// Feedback service. WORKER_BASE is set by utils/endpoints.js (loaded
+// first in every HTML).
 
 window.FeedbackService = {
-  /** Base URL for the feedback collector worker */
-  API_BASE: "https://feedback-collector.sumanreddy568.workers.dev",
+  API_BASE: WORKER_BASE,
 
   /**
    * Fetches user identity fields from chrome.storage.local.

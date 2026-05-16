@@ -1,5 +1,6 @@
-var TRACK_URL = "https://multi-product-analytics.sumanreddy568.workers.dev/";
-var LOGPUSH_URL = TRACK_URL + "api/logpush";
+// WORKER_BASE is set by utils/endpoints.js (loaded first in every HTML).
+var TRACK_URL = WORKER_BASE + "/api/event";
+var LOGPUSH_URL = WORKER_BASE + "/api/logpush";
 
 
 async function track(eventName, options = {}) {

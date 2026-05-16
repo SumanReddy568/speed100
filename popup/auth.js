@@ -1,11 +1,8 @@
-/**
- * Authentication Module for Speed Tester
- * Integrates with Cloudflare Auth Worker API
- */
+// Authentication module. WORKER_BASE is set by utils/endpoints.js
+// (loaded first in every HTML).
 
-// Configuration
 const AUTH_CONFIG = {
-    API_BASE_URL: 'https://auth-worker.sumanreddy568.workers.dev',
+    API_BASE_URL: WORKER_BASE,
     SOURCE: 'speed-tester-app',
     STORAGE_KEYS: {
         TOKEN: 'auth_token',

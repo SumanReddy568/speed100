@@ -1,10 +1,8 @@
-/**
- * Version Management Service
- * Handles version checking and update notifications
- */
+// Version-check service. WORKER_BASE is set by utils/endpoints.js
+// (loaded first in every HTML).
 
 window.VersionService = {
-  API_URL: "https://multi-product-analytics.sumanreddy568.workers.dev/api/latest-version?source=speed100",
+  API_URL: WORKER_BASE + "/api/latest-version?source=speed100",
   currentVersion: null,
   latestVersion: null,
 
