@@ -1,3 +1,6 @@
+## [1.3.6] - 2026-05-16
+- new worker migration
+
 ## [1.3.5] - 2026-03-30
 - new version management changes
 
