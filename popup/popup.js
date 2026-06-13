@@ -22,10 +22,10 @@ document.addEventListener("DOMContentLoaded", function () {
       "speedTestHistory",
       "loadTestHistory",
       "openRouterApiKey",
-      "testInterval",
       "llmModel",
       "feedbackSubmitted",
       "hasRunFirstTest",
+      "lastSkipReason",
     ],
     function (result) {
       // Load histories
@@ -49,8 +49,12 @@ document.addEventListener("DOMContentLoaded", function () {
         state.hasRunFirstTest = true;
       }
       
-      // Initialize settings UI
-      elements.testInterval.value = result.testInterval || "30";
+      // Initialize settings UI. testInterval is persisted to chrome.storage.sync
+      // (see the save handler and background.js), so it must be read from sync —
+      // reading it from local left the dropdown stuck at the default 30.
+      chrome.storage.sync.get(["testInterval"], (sync) => {
+        elements.testInterval.value = sync.testInterval || "30";
+      });
         if (elements.llmModelInput) {
           elements.llmModelInput.value =
             result.llmModel || "kwaipilot/kat-coder-pro:free";
@@ -68,6 +72,21 @@ document.addEventListener("DOMContentLoaded", function () {
         elements.testStatus.textContent =
           "Run your first speed test to get started!";
         elements.testStatus.style.color = "#666";
+
+        // If the most recent background event was a skipped automatic test
+        // (metered connection / data cap), surface why — even though the popup
+        // was closed when it happened. Only show it if it's newer than the last
+        // successful test, so a stale reason doesn't override fresh results.
+        if (result.lastSkipReason && result.lastSkipReason.message) {
+          const lastTestTs =
+            result.speedTestHistory && result.speedTestHistory[0]
+              ? result.speedTestHistory[0].timestamp
+              : 0;
+          if (result.lastSkipReason.timestamp > lastTestTs) {
+            elements.testStatus.textContent = result.lastSkipReason.message;
+            elements.testStatus.style.color = "#FFC107";
+          }
+        }
       }
   );
 

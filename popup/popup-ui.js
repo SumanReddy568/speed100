@@ -105,6 +105,10 @@ window.PopupApp = {
       testInterval: document.getElementById("test-interval"),
       openRouterApiKeyInput: document.getElementById("openrouter-api-key"),
       llmModelInput: document.getElementById("llm-model"),
+      pauseOnMetered: document.getElementById("pause-on-metered"),
+      monthlyDataCap: document.getElementById("monthly-data-cap"),
+      dataUsageDisplay: document.getElementById("data-usage-display"),
+      speedAlertThreshold: document.getElementById("speed-alert-threshold"),
       saveSettings: document.getElementById("save-settings"),
 
       // Container elements

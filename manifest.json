@@ -7,10 +7,12 @@
   "permissions": [
     "storage",
     "alarms",
-    "activeTab"
+    "activeTab",
+    "notifications"
   ],
   "host_permissions": [
     "https://speed.cloudflare.com/*",
+    "https://speed.hetzner.de/*",
     "https://api.ipify.org/*",
     "https://ipapi.co/*",
     "https://ipinfo.io/*",

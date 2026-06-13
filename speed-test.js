@@ -1,38 +1,40 @@
 /**
  * SpeedTest — Rewritten for accurate ISP/Wi-Fi measurement in a Chrome extension.
  *
- * Core design changes vs. the old version:
+ * Core design:
  *
- * 1.  DELTA-BASED throughput:  Each sample records (bytes, time) since the
- *     *previous* sample — not since t=0.  This gives true instantaneous
- *     throughput instead of a long-running average that converges toward a
- *     low number.
+ * 1.  TIME-BINNED AGGREGATE throughput:  Wall-clock is divided into fixed bins
+ *     (binMs).  Every byte delivered by *any* stream is credited to the bin it
+ *     arrived in.  A bin's throughput is therefore the SUM of all concurrent
+ *     streams active during that bin — the true aggregate link bandwidth, which
+ *     is the entire point of running multiple parallel streams.  (The old code
+ *     pushed each stream's individual speed into one array and reported the
+ *     p90 of *per-stream* speeds, under-reporting an N-stream link by ~Nx.)
  *
- * 2.  PER-STREAM tracking:  Every concurrent stream owns its own byte counter
- *     and last-sample timestamp.  There is no shared mutable counter between
- *     streams, so streams cannot corrupt each other's measurements.
+ * 2.  SHARED bin map, not per-stream counters:  Streams contribute to a single
+ *     bins map keyed by time index.  Concurrency sums naturally; streams that
+ *     start late or finish early simply contribute to whichever bins they were
+ *     active in.
  *
- * 3.  AGGREGATE bandwidth:  The progress callback receives the *sum* of all
- *     active stream speeds (correct for parallel downloads), not one stream's
- *     speed treated as total.
+ * 3.  REFETCH loop keeps the link saturated:  Each stream re-issues fetches
+ *     until the full duration elapses.  A single fixed-size fetch would drain
+ *     in a fraction of a second on a fast link, leaving the rest of the window
+ *     idle and measuring only TCP slow-start.  Looping keeps bytes flowing for
+ *     the whole window.
  *
- * 4.  90th-PERCENTILE of DELTA samples:  Upload and download both collect
- *     per-interval delta speeds, then report the 90th percentile — captures
- *     "the best the link can sustain" rather than a median that is depressed
- *     by TCP slow-start and burst gaps.
+ * 4.  90th-PERCENTILE of per-bin aggregates:  The final figure is the p90 of
+ *     completed post-warmup bin throughputs — "the best the link can sustain"
+ *     rather than a median depressed by slow-start and burst gaps.
  *
- * 5.  SHORT warmup (800 ms):  TCP slow-start is typically complete within
- *     500–800 ms for most broadband connections.  Dropping 1.5 s was wasting
- *     15 % of the measurement window.
+ * 5.  SHORT warmup (800 ms):  Bins whose window falls inside the warmup are
+ *     discarded.  TCP slow-start is typically complete within 500–800 ms for
+ *     most broadband connections.
  *
- * 6.  UPLOAD streaming via ReadableStream:  Instead of pre-generating a large
- *     buffer per chunk (which stalls on slower CPUs), upload uses a
- *     ReadableStream so bytes hit the wire continuously and chunk timing
- *     accurately reflects network latency, not JS allocation time.
- *
- * 7.  UPLOAD delta tracking:  Each upload stream tracks (bytesSent, time) per
- *     fetch so that speed is derived from actual wire time, not wall-clock
- *     elapsed since test start.
+ * 6.  UPLOAD reuses ONE random buffer:  The buffer is generated once and the
+ *     same immutable Blob is POSTed each request, so no per-request
+ *     crypto.getRandomValues stall pollutes the timing.  Each request's bytes
+ *     are spread across the bins its wire-time covered, so concurrent upload
+ *     streams aggregate exactly like download.
  *
  * PUBLIC API — identical to the original so all callers work without changes:
  *   new SpeedTest()
@@ -50,10 +52,16 @@ class SpeedTest {
         this.bloat         = 0;
         this.baselinePing  = 0;
 
+        // Bytes consumed by the most recent download / upload stage. Read by the
+        // background worker to track data usage against a metered/cap budget.
+        this.bytesDownloaded = 0;
+        this.bytesUploaded   = 0;
+
         // ── Tuning ────────────────────────────────────────────────────────────
         this.testDuration      = 10_000; // ms  — total wall-clock per stage
-        this.warmupDuration    =    800; // ms  — discard samples before this   
-        this.sampleInterval    =    150; // ms  — minimum gap between samples
+        this.warmupDuration    =    800; // ms  — discard samples before this
+        this.sampleInterval    =    150; // ms  — minimum gap between progress emits
+        this.binMs             =    200; // ms  — aggregation bin width
         this.concurrentStreams =      3; // parallel streams
         this.testFileSize      = 25 * 1024 * 1024; // 25 MB per stream request
         this.uploadChunkSize   =  4 * 1024 * 1024; // 4 MB per upload request
@@ -103,71 +111,64 @@ class SpeedTest {
     // ── Download test ────────────────────────────────────────────────────────
 
     async testDownloadSpeed() {
-        const testStart   = performance.now();
-        const allSamples  = []; // delta-bps samples from every stream
-        let   activeSpeed = 0;  // running total broadcast to UI
+        const testStart  = performance.now();
+        const binMs      = this.binMs;
+        const bins       = new Map(); // binIndex -> total bytes across ALL streams
+        let   lastEmit   = 0;         // throttle progress emits (shared across streams)
+        this.bytesDownloaded = 0;     // reset per-stage data-usage counter
+
+        const binIndexAt = (now) => Math.floor((now - testStart) / binMs);
 
         /**
-         * Each stream tracks its own (bytesAtLastSample, timeAtLastSample).
-         * Samples are delta bytes / delta time — true instantaneous throughput.
+         * Every stream credits the bytes it reads to the current time bin, so a
+         * bin's total is the SUM of all concurrent streams.  Each stream keeps
+         * refetching until the duration elapses, so the link stays saturated for
+         * the whole window instead of draining one fixed-size file and idling.
          */
         const streamDownload = async (id) => {
             // Stagger stream starts to reduce burst 429s
             await delay(id * 250);
 
-            let streamBytesAtLastSample = 0;
-            let streamTimeAtLastSample  = performance.now();
-            let streamTotalBytes        = 0;
-
             const controller = new AbortController();
             const hardKill   = setTimeout(() => controller.abort(), this.testDuration + 5_000);
 
             try {
-                let response = await this._fetchWithRetry(
-                    () => this.getCurrentDownloadUrl(this.testFileSize, id),
-                    controller,
-                );
-                if (!response) { clearTimeout(hardKill); return; }
+                while (performance.now() - testStart < this.testDuration) {
+                    const response = await this._fetchWithRetry(
+                        () => this.getCurrentDownloadUrl(this.testFileSize, id),
+                        controller,
+                    );
+                    if (!response) break; // permanently rate-limited → drop this stream
 
-                const reader = response.body.getReader();
+                    const reader = response.body.getReader();
+                    let   stop   = false;
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break; // file finished → outer loop refetches
 
-                    streamTotalBytes += value.length;
-                    const now          = performance.now();
-                    const elapsedTotal = now - testStart;
+                        const now = performance.now();
+                        const idx = binIndexAt(now);
+                        bins.set(idx, (bins.get(idx) ?? 0) + value.length);
+                        this.bytesDownloaded += value.length;
 
-                    // ── Delta sample ─────────────────────────────────────────
-                    if (now - streamTimeAtLastSample >= this.sampleInterval
-                        && elapsedTotal > this.warmupDuration)
-                    {
-                        const deltaBytes = streamTotalBytes - streamBytesAtLastSample;
-                        const deltaSecs  = (now - streamTimeAtLastSample) / 1000;
-
-                        if (deltaSecs > 0 && deltaBytes > 0) {
-                            const deltaBps = (deltaBytes * 8) / deltaSecs;
-                            allSamples.push(deltaBps);
-
-                            // Re-derive current aggregate speed from recent samples
-                            // (last N samples across all streams)
-                            const recent   = allSamples.slice(-this.concurrentStreams * 5);
-                            activeSpeed    = this._p90(recent);
-                            this.downloadSpeed = activeSpeed;
-
-                            this._emitProgress();
-                            this._maybeMeasureBloat(elapsedTotal);
+                        if (now - lastEmit >= this.sampleInterval) {
+                            lastEmit = now;
+                            const samples = this._binSamples(bins, binMs, this.warmupDuration, idx);
+                            if (samples.length) {
+                                this.downloadSpeed = this._p90(samples.slice(-15));
+                                this._emitProgress();
+                                this._maybeMeasureBloat(now - testStart);
+                            }
                         }
 
-                        streamBytesAtLastSample = streamTotalBytes;
-                        streamTimeAtLastSample  = now;
+                        if (now - testStart >= this.testDuration) {
+                            controller.abort();
+                            stop = true;
+                            break;
+                        }
                     }
-
-                    if (elapsedTotal >= this.testDuration) {
-                        controller.abort();
-                        break;
-                    }
+                    if (stop) break;
                 }
             } catch (err) {
                 if (err.name !== 'AbortError') console.error(`DL stream ${id}:`, err);
@@ -180,9 +181,10 @@ class SpeedTest {
             Array.from({ length: this.concurrentStreams }, (_, i) => streamDownload(i)),
         );
 
-        // Final answer: 90th percentile of all collected delta samples
-        if (allSamples.length > 0) {
-            this.downloadSpeed = this._p90(allSamples);
+        // Final answer: p90 of completed, post-warmup aggregate bin throughputs.
+        const samples = this._binSamples(bins, binMs, this.warmupDuration, binIndexAt(performance.now()));
+        if (samples.length > 0) {
+            this.downloadSpeed = this._p90(samples);
         }
         return this.downloadSpeed;
     }
@@ -190,25 +192,42 @@ class SpeedTest {
     // ── Upload test ──────────────────────────────────────────────────────────
 
     async testUploadSpeed() {
-        const testStart  = performance.now();
-        const allSamples = [];
+        const testStart = performance.now();
+        const binMs     = this.binMs;
+        const bins      = new Map(); // binIndex -> total bytes across ALL streams
+        let   lastEmit  = 0;
+
+        // Generate the random payload ONCE and reuse the same immutable Blob for
+        // every request — re-running crypto.getRandomValues per request would
+        // stall the event loop and pollute the timing on slower CPUs.
+        const chunkSize = this.uploadChunkSize;
+        const chunkBlob = new Blob([this._randomBytes(chunkSize)]);
+        this.bytesUploaded = 0; // reset per-stage data-usage counter
+
+        const binIndexAt = (now) => Math.floor((now - testStart) / binMs);
 
         /**
-         * Upload approach:
-         *   - Stream a ReadableStream of random bytes so the browser pushes data
-         *     continuously without waiting for JS to allocate a new buffer.
-         *   - Measure round-trip time of each request; derive speed from
-         *     (bytes sent) / (wire time).  Wire time = end − start of fetch,
-         *     which accurately reflects network throughput.
+         * fetch() gives no incremental upload progress, so a request's bytes are
+         * credited only on completion — but spread across the bins its wire-time
+         * [start, end] covered, proportional to overlap.  Concurrent streams then
+         * sum into a true aggregate per bin, exactly like download.
          */
+        const creditSpread = (start, end, bytes) => {
+            const dur = end - start;
+            if (dur <= 0) return;
+            const firstIdx = Math.floor((start - testStart) / binMs);
+            const lastIdx  = Math.floor((end   - testStart) / binMs);
+            for (let i = firstIdx; i <= lastIdx; i++) {
+                const binStart = testStart + i * binMs;
+                const overlap  = Math.min(end, binStart + binMs) - Math.max(start, binStart);
+                if (overlap > 0) bins.set(i, (bins.get(i) ?? 0) + bytes * (overlap / dur));
+            }
+        };
+
         const streamUpload = async (id) => {
             await delay(id * 250);
 
             while (performance.now() - testStart < this.testDuration) {
-                const chunkSize = this.uploadChunkSize;
-                const chunkData = this._randomBytes(chunkSize);
-                const blob      = new Blob([chunkData]);
-
                 const controller = new AbortController();
                 const hardKill   = setTimeout(() => controller.abort(), 8_000);
 
@@ -216,24 +235,29 @@ class SpeedTest {
                 try {
                     await fetch(this.uploadEndpoint, {
                         method : 'POST',
-                        body   : blob,
+                        body   : chunkBlob,
                         signal : controller.signal,
                         mode   : 'no-cors',
                     });
                     clearTimeout(hardKill);
+                    this.bytesUploaded += chunkSize; // bytes went on the wire
 
                     const wireEnd  = performance.now();
                     const wireSecs = (wireEnd - wireStart) / 1000;
-                    const elapsed  = wireEnd - testStart;
 
                     // Reject suspiciously fast responses (cached / no-cors swallowed)
-                    if (wireSecs > 0.1 && elapsed > this.warmupDuration) {
-                        const bps = (chunkSize * 8) / wireSecs;
-                        allSamples.push(bps);
+                    if (wireSecs > 0.1) {
+                        creditSpread(wireStart, wireEnd, chunkSize);
 
-                        this.uploadSpeed = this._p90(allSamples);
-                        this._emitProgress();
-                        this._maybeMeasureBloat(elapsed);
+                        if (wireEnd - lastEmit >= this.sampleInterval) {
+                            lastEmit = wireEnd;
+                            const samples = this._binSamples(bins, binMs, this.warmupDuration, binIndexAt(wireEnd));
+                            if (samples.length) {
+                                this.uploadSpeed = this._p90(samples.slice(-15));
+                                this._emitProgress();
+                                this._maybeMeasureBloat(wireEnd - testStart);
+                            }
+                        }
                     }
                 } catch (err) {
                     clearTimeout(hardKill);
@@ -247,8 +271,9 @@ class SpeedTest {
             Array.from({ length: this.concurrentStreams }, (_, i) => streamUpload(i)),
         );
 
-        if (allSamples.length > 0) {
-            this.uploadSpeed = this._p90(allSamples);
+        const samples = this._binSamples(bins, binMs, this.warmupDuration, binIndexAt(performance.now()));
+        if (samples.length > 0) {
+            this.uploadSpeed = this._p90(samples);
         }
         return this.uploadSpeed;
     }
@@ -474,6 +499,24 @@ class SpeedTest {
             this._lastBloatTime = now;
             this.measureBloat();
         }
+    }
+
+    /**
+     * Convert a bins map (binIndex → bytes delivered across all streams) into an
+     * array of aggregate bps samples, one per COMPLETED, post-warmup bin.
+     *   - Bins whose window falls inside the warmup are dropped.
+     *   - The still-filling current bin (index >= excludeFromIdx) is dropped so a
+     *     partial bin never deflates the result.
+     */
+    _binSamples(bins, binMs, warmupMs, excludeFromIdx) {
+        const binSecs    = binMs / 1000;
+        const warmupBins = Math.ceil(warmupMs / binMs);
+        const out = [];
+        for (const [i, bytes] of bins) {
+            if (i < warmupBins || i >= excludeFromIdx) continue;
+            out.push((bytes * 8) / binSecs);
+        }
+        return out;
     }
 
     /** 90th-percentile of an array of numbers. */

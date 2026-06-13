@@ -1,4 +1,4 @@
-importScripts('utils/analytics.js', 'speed-test.js', 'services/network-diagnostics.js', 'services/ai-analysis.js');
+importScripts('utils/endpoints.js', 'utils/analytics.js', 'speed-test.js', 'services/network-diagnostics.js', 'services/ai-analysis.js');
 
 const speedTest = new self.SpeedTest();
 const aiAnalysis = new self.NetworkAIAnalysis();
@@ -26,6 +26,144 @@ function updateBadge(speedMbps) {
     chrome.action.setBadgeBackgroundColor({
         color: speedMbps > 100 ? '#4CAF50' : speedMbps > 50 ? '#FFC107' : '#F44336'
     });
+}
+
+// ── Desktop notifications ────────────────────────────────────────────────────
+
+// Show a basic notification. Re-uses a fixed id per category so a newer alert
+// of the same kind replaces the previous one instead of stacking.
+function notify(id, title, message) {
+    if (!chrome.notifications) return;
+    chrome.notifications.create(id, {
+        type    : 'basic',
+        iconUrl : chrome.runtime.getURL('icons/icon128.png'),
+        title,
+        message,
+        priority: 1,
+    });
+}
+
+// Fire a low-speed alert when a completed test is below the user's threshold.
+//
+//   - Manual tests ALWAYS notify when below — the user explicitly asked for a
+//     result, so they get one every run (and a recovery note if it climbed back
+//     above after previously being below).
+//   - Automated tests notify only on the OK→below transition (and recovery on
+//     the way back up), so a persistently slow link doesn't notify every cycle.
+async function maybeSpeedAlert(downloadMbps, isAutomated = false) {
+    const threshold = await new Promise((resolve) => {
+        chrome.storage.sync.get(['speedAlertThresholdMbps'], (r) => {
+            resolve(parseFloat(r.speedAlertThresholdMbps) || 0);
+        });
+    });
+    if (!threshold) return; // 0 / unset → alerts off
+
+    const below = downloadMbps < threshold;
+    const prevBelow = await new Promise((resolve) => {
+        chrome.storage.local.get(['speedAlertBelow'], (r) => resolve(r.speedAlertBelow === true));
+    });
+
+    // Manual: alert on every below-threshold result. Automated: only on the
+    // healthy→slow transition.
+    const alertBelow = below && (!isAutomated || !prevBelow);
+    // Recovery note fires (for both kinds) only when we were previously below.
+    const alertRecovered = !below && prevBelow;
+
+    if (alertBelow) {
+        notify('speed-alert', 'Slow connection',
+            `Download is ${downloadMbps.toFixed(1)} Mbps — below your ${threshold} Mbps alert threshold.`);
+    } else if (alertRecovered) {
+        notify('speed-alert', 'Connection recovered',
+            `Download is back up to ${downloadMbps.toFixed(1)} Mbps.`);
+    }
+
+    await chrome.storage.local.set({ speedAlertBelow: below });
+}
+
+// ── Metered-connection guard + data budget ──────────────────────────────────
+
+// True when the OS/browser signals the connection should conserve data:
+// Data Saver / Lite mode is on, or the active connection is cellular.
+// (conn.type is not exposed on all desktop platforms, so saveData is the
+// primary, reliable signal.)
+function isMeteredConnection() {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!conn) return false;
+    if (conn.saveData === true) return true;
+    if (conn.type === 'cellular') return true;
+    return false;
+}
+
+// Current calendar month as "YYYY-MM" (local time).
+function currentMonth() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Read this month's cumulative test data usage, auto-resetting on month rollover.
+async function getDataUsage() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['dataUsage'], (r) => {
+            const month = currentMonth();
+            let usage = r.dataUsage;
+            if (!usage || usage.month !== month) usage = { month, bytes: 0 };
+            resolve(usage);
+        });
+    });
+}
+
+// Add bytes to this month's usage total and persist it. Fires a one-time
+// notification the first time usage crosses the monthly cap (capNotified lives
+// inside the usage object, so it resets automatically on month rollover).
+async function addDataUsage(bytes) {
+    const usage = await getDataUsage();
+    usage.bytes += bytes;
+
+    const { monthlyDataCapMB } = await getGuardSettings();
+    if (monthlyDataCapMB > 0 && !usage.capNotified
+        && usage.bytes >= monthlyDataCapMB * 1024 * 1024) {
+        usage.capNotified = true;
+        notify('data-cap', 'Data cap reached',
+            `Speed-test data usage hit your ${monthlyDataCapMB} MB monthly cap. `
+            + `Automatic tests are paused until next month.`);
+    }
+
+    await chrome.storage.local.set({ dataUsage: usage });
+    return usage;
+}
+
+// Read the guard settings (sync storage, with sensible defaults).
+async function getGuardSettings() {
+    return new Promise((resolve) => {
+        chrome.storage.sync.get(['pauseOnMetered', 'monthlyDataCapMB'], (r) => {
+            resolve({
+                // Default ON — background tests can pull >1 GB/hour on fast links.
+                pauseOnMetered: r.pauseOnMetered !== false,
+                // 0 = unlimited.
+                monthlyDataCapMB: parseInt(r.monthlyDataCapMB, 10) || 0,
+            });
+        });
+    });
+}
+
+// Decide whether an automated test should be skipped. Returns a reason string
+// to skip, or null to proceed. Manual tests bypass this entirely.
+async function shouldSkipAutomatedTest() {
+    const settings = await getGuardSettings();
+
+    if (settings.pauseOnMetered && isMeteredConnection()) {
+        return 'Skipped automatic test: on a metered/data-saver connection.';
+    }
+
+    if (settings.monthlyDataCapMB > 0) {
+        const usage = await getDataUsage();
+        const capBytes = settings.monthlyDataCapMB * 1024 * 1024;
+        if (usage.bytes >= capBytes) {
+            return `Skipped automatic test: monthly data cap of ${settings.monthlyDataCapMB} MB reached.`;
+        }
+    }
+
+    return null;
 }
 
 // Function to check if user is authenticated (background version)
@@ -77,6 +215,18 @@ async function runSpeedTest(isAutomated = false) {
         return null;
     }
 
+    // Metered-connection / data-cap guard — automated tests only. A manual test
+    // is an explicit user action, so it always runs (and still counts usage).
+    if (isAutomated) {
+        const skipReason = await shouldSkipAutomatedTest();
+        if (skipReason) {
+            console.log(skipReason);
+            chrome.storage.local.set({ lastSkipReason: { message: skipReason, timestamp: Date.now() } });
+            chrome.runtime.sendMessage({ type: 'testSkipped', reason: skipReason }).catch(() => { });
+            return null;
+        }
+    }
+
     // Helper for conditional logging
     const log = (level, msg, data) => {
         if (!isAutomated) {
@@ -126,6 +276,17 @@ async function runSpeedTest(isAutomated = false) {
         log('info', 'Upload test started');
         await speedTest.testUploadSpeed();
         log('info', 'Upload test finished', { speed: speedTest.uploadSpeed / 1000000 });
+
+        // Tally the data this test consumed against the monthly budget.
+        const bytesUsed = (speedTest.bytesDownloaded || 0) + (speedTest.bytesUploaded || 0);
+        const usage = await addDataUsage(bytesUsed);
+        log('info', 'Data usage updated', {
+            testMB: Math.round(bytesUsed / (1024 * 1024)),
+            monthMB: Math.round(usage.bytes / (1024 * 1024)),
+        });
+
+        // Low-speed threshold alert (no-op unless the user set a threshold).
+        await maybeSpeedAlert(speedTest.downloadSpeed / 1000000, isAutomated);
 
         // Update network info with measured bloat
         networkInfo.bloat = speedTest.bloat;
@@ -276,6 +437,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Then run the test
         runSpeedTest();
         return true; // Required for async response
+    } else if (request.type === 'getDataUsage') {
+        Promise.all([getDataUsage(), getGuardSettings()]).then(([usage, settings]) => {
+            sendResponse({
+                bytes: usage.bytes,
+                month: usage.month,
+                monthlyDataCapMB: settings.monthlyDataCapMB,
+                pauseOnMetered: settings.pauseOnMetered,
+                isMetered: isMeteredConnection(),
+            });
+        });
+        return true; // async response
     } else if (request.type === 'updateInterval') {
         chrome.alarms.clear('nextSpeedTest');
         if (request.interval > 0) {

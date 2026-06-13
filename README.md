@@ -11,7 +11,8 @@ A lightweight Chrome extension that measures your internet connection's download
 - 🌐 Network information (IP, connection type, latency)
 - ⚙️ Configurable automatic testing intervals
 - 📈 Historical data visualization (if implemented)
-- 🔄 Background testing with notifications
+- 🔄 Background testing with desktop notifications (low-speed alerts + data-cap reached)
+- 🛡️ **Data guard:** Pauses background tests on metered / data-saver connections and respects an optional monthly data cap
 - 🧠 **AI Insights:** Provides intelligent analysis of your network performance, including personalized recommendations and predictions.
 
 ## Installation
@@ -35,8 +36,10 @@ A lightweight Chrome extension that measures your internet connection's download
 
 Configure in settings:
 - Automatic test frequency (15/30/60 minutes or disabled)
+- Pause automatic tests on metered / data-saver connections (default: on)
+- Monthly data cap in MB (0 = unlimited); shows data used this month
+- Low-speed alert threshold in Mbps (0 = off) — desktop notification on drop & recovery
 - Speed units (Mbps/Gbps)
-- Notification preferences
 
 ## Technical Details
 

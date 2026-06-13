@@ -103,6 +103,7 @@ window.PopupEvents = {
 
     elements.settingsIcon.addEventListener("click", () => {
       elements.settingsModal.style.display = "block";
+      this.loadDataUsageSettings();
     });
 
     elements.saveSettings.addEventListener("click", async () => {
@@ -114,8 +115,23 @@ window.PopupEvents = {
         ? elements.llmModelInput.value.trim()
         : "";
 
+      const pauseOnMetered = elements.pauseOnMetered
+        ? elements.pauseOnMetered.checked
+        : true;
+      const monthlyDataCapMB = elements.monthlyDataCap
+        ? Math.max(0, parseInt(elements.monthlyDataCap.value, 10) || 0)
+        : 0;
+      const speedAlertThresholdMbps = elements.speedAlertThreshold
+        ? Math.max(0, parseFloat(elements.speedAlertThreshold.value) || 0)
+        : 0;
+
       const storagePromises = [
         chrome.storage.sync.set({ testInterval: interval }),
+        chrome.storage.sync.set({
+          pauseOnMetered,
+          monthlyDataCapMB,
+          speedAlertThresholdMbps,
+        }),
       ];
 
       if (elements.openRouterApiKeyInput) {
@@ -160,6 +176,53 @@ window.PopupEvents = {
       ) {
         elements.loadTestModal.style.display = "none";
       }
+    });
+  },
+
+  // Populate the metered-guard / data-cap controls and the usage readout.
+  loadDataUsageSettings() {
+    const { elements } = window.PopupApp;
+
+    chrome.storage.sync.get(
+      [
+        "testInterval",
+        "pauseOnMetered",
+        "monthlyDataCapMB",
+        "speedAlertThresholdMbps",
+      ],
+      (result) => {
+        if (elements.testInterval && result.testInterval) {
+          elements.testInterval.value = result.testInterval;
+        }
+        if (elements.pauseOnMetered) {
+          elements.pauseOnMetered.checked = result.pauseOnMetered !== false;
+        }
+        if (elements.monthlyDataCap) {
+          elements.monthlyDataCap.value = result.monthlyDataCapMB || 0;
+        }
+        if (elements.speedAlertThreshold) {
+          elements.speedAlertThreshold.value =
+            result.speedAlertThresholdMbps || 0;
+        }
+      },
+    );
+
+    if (!elements.dataUsageDisplay) return;
+    chrome.runtime.sendMessage({ type: "getDataUsage" }, (info) => {
+      if (chrome.runtime.lastError || !info) {
+        elements.dataUsageDisplay.textContent = "–";
+        return;
+      }
+      const usedMB = info.bytes / (1024 * 1024);
+      const used =
+        usedMB >= 1024
+          ? `${(usedMB / 1024).toFixed(2)} GB`
+          : `${usedMB.toFixed(0)} MB`;
+      const cap = info.monthlyDataCapMB
+        ? ` of ${info.monthlyDataCapMB} MB cap`
+        : "";
+      const metered = info.isMetered ? " · metered connection detected" : "";
+      elements.dataUsageDisplay.textContent = `${used}${cap}${metered}`;
     });
   },
 
@@ -337,6 +400,9 @@ window.PopupEvents = {
         if (request.networkInfo || request.bloat !== undefined)
           window.PopupNetwork.updateInfo(request.networkInfo || { bloat: request.bloat });
         elements.testStatus.textContent = request.message || "Testing...";
+      } else if (request.type === "testSkipped") {
+        elements.testStatus.textContent = request.reason || "Automatic test skipped.";
+        elements.testStatus.style.color = "#FFC107";
       }
 
       if (request.aiAnalysis) window.PopupAI.updateInsights(request.aiAnalysis);

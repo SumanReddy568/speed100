@@ -485,6 +485,35 @@
                     </select>
                 </div>
 
+                <!-- Data Usage Section -->
+                <div class="data-usage-section">
+                    <h4 class="ai-settings-title"><i class="fas fa-database"></i> Data Usage</h4>
+                    <div class="setting-option setting-option-inline">
+                        <label for="pause-on-metered">Pause automatic tests on metered / data-saver connections</label>
+                        <input type="checkbox" id="pause-on-metered" checked>
+                    </div>
+                    <div class="setting-option">
+                        <label for="monthly-data-cap">Monthly data cap (MB, 0 = unlimited):</label>
+                        <input type="number" id="monthly-data-cap" min="0" step="100" placeholder="0">
+                        <small class="setting-hint">Automatic tests pause once this month's test data reaches the cap.
+                            Manual tests always run. Each test can use several hundred MB on a fast link.</small>
+                    </div>
+                    <div class="setting-option">
+                        <small class="setting-hint">Used this month: <span id="data-usage-display">–</span></small>
+                    </div>
+                </div>
+
+                <!-- Alerts Section -->
+                <div class="data-usage-section">
+                    <h4 class="ai-settings-title"><i class="fas fa-bell"></i> Alerts</h4>
+                    <div class="setting-option">
+                        <label for="speed-alert-threshold">Notify when download drops below (Mbps, 0 = off):</label>
+                        <input type="number" id="speed-alert-threshold" min="0" step="1" placeholder="0">
+                        <small class="setting-hint">Sends a desktop notification when a test falls below this speed,
+                            and one when it recovers.</small>
+                    </div>
+                </div>
+
                 <!-- AI Settings Section -->
                 <div class="ai-settings-section">
                     <h4 class="ai-settings-title"><i class="fas fa-robot"></i> AI Settings</h4>

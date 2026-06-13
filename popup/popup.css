@@ -8,6 +8,18 @@ body {
     opacity: 0;
     /* Hidden by default for auth check */
     transition: opacity 0.2s ease-in;
+    /* Fail-safe: popup-auth-check.js reveals the popup by setting opacity to 1.
+       If any script throws before that runs, the popup would otherwise stay
+       permanently transparent — looking like the icon does nothing on click.
+       This delayed animation forces the popup visible after 1.5s no matter what,
+       so a single JS error can never leave it stuck invisible. */
+    animation: popup-failsafe-reveal 0.01s linear 1.5s forwards;
+}
+
+@keyframes popup-failsafe-reveal {
+    to {
+        opacity: 1;
+    }
 }
 
 /* Base text styling for consistency */
@@ -867,6 +879,41 @@ svg line {
     margin-top: 4px;
     color: #888;
     font-size: 11px;
+}
+
+.setting-option input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #444;
+    box-sizing: border-box;
+}
+
+.setting-option-inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.setting-option-inline label {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.setting-option-inline input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    accent-color: #4285f4;
+}
+
+.data-usage-section {
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #333;
 }
 
 .tools-links {
