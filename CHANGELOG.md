@@ -1,3 +1,6 @@
+## [1.3.7] - 2026-06-13
+- Add low-speed alerts, data guard, and notifications - Desktop notifications: low-speed threshold alerts (drop + recovery) and a one-time data-cap-reached notice - Metered/data-saver guard pauses automatic tests; manual tests always run - Monthly data cap (MB) with per-month usage tracking and auto-reset - Settings UI for pause-on-metered, data cap, and alert threshold + usage readout - Auth check fail-safe reveals the popup UI on unexpected errors - Add Hetzner speed endpoint + notifications permission Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+
 ## [1.3.6] - 2026-05-16
 - new worker migration
 
