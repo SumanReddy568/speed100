@@ -1,3 +1,6 @@
+## [1.4.2] - 2026-06-16
+- fix: avoid xargs in zip_extension.sh to handle apostrophes in commit messages
+
 ## [1.4.1] - 2026-06-13
 - Bump version to 1.4.0 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
 
