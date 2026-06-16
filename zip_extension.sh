@@ -32,7 +32,9 @@ increment_version() {
 }
 
 # Get current commit message (excluding [skip ci] if present)
-COMMIT_MESSAGE=$(git log -1 --pretty=%B | sed 's/\[skip ci\]//g' | xargs)
+# Use %s for the subject line and trim with sed instead of xargs, since xargs
+# treats quotes specially and chokes on apostrophes (e.g. "don't").
+COMMIT_MESSAGE=$(git log -1 --pretty=%s | sed 's/\[skip ci\]//g' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
 
 # Update version in manifest
 CURRENT_VERSION=$(jq -r '.version' "$MANIFEST_PATH")
