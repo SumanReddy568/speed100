@@ -3,6 +3,8 @@
 
 window.FeedbackService = {
   API_BASE: WORKER_BASE,
+  // Ask for feedback once this many manual tests have completed.
+  FEEDBACK_AFTER_TESTS: 10,
 
   /**
    * Fetches user identity fields from chrome.storage.local.
@@ -62,8 +64,11 @@ window.FeedbackService = {
     if (!elements.feedbackRatingContainer) return;
 
     try {
-      const { feedbackSubmitted } = await chrome.storage.local.get("feedbackSubmitted");
-      if (feedbackSubmitted) {
+      const { feedbackSubmitted, testsRun = 0 } = await chrome.storage.local.get([
+        "feedbackSubmitted",
+        "testsRun",
+      ]);
+      if (feedbackSubmitted || testsRun < this.FEEDBACK_AFTER_TESTS) {
         elements.feedbackRatingContainer.style.display = "none";
         return;
       }
@@ -87,30 +92,22 @@ window.FeedbackService = {
 
   /**
    * Determines whether the user is allowed to run another speed test.
-   * First test is always allowed; subsequent tests require feedback.
+   * The first FEEDBACK_AFTER_TESTS tests are free; after that feedback is required.
    * @returns {Promise<boolean>}
    */
   async checkCanRunTest() {
     try {
       const result = await new Promise((resolve) =>
         chrome.storage.local.get(
-          ["user_id", "user_email", "user_hash", "hasRunFirstTest", "feedbackSubmitted"],
+          ["user_id", "user_email", "user_hash", "testsRun", "feedbackSubmitted"],
           resolve,
         ),
       );
 
       const userId = result.user_id || result.user_email || "anonymous";
-      const hasRunFirstTest = result.hasRunFirstTest || false;
+      const testsRun = result.testsRun || 0;
 
-      console.log("FeedbackService.checkCanRunTest:", {
-        hasRunFirstTest,
-        userId,
-        localFeedbackSubmitted: result.feedbackSubmitted,
-      });
-
-      // Always allow the very first test, and anyone who already gave feedback
-      if (!hasRunFirstTest || result.feedbackSubmitted) {
-        console.log("FeedbackService: Allowing first test");
+      if (testsRun < this.FEEDBACK_AFTER_TESTS || result.feedbackSubmitted) {
         return true;
       }
 

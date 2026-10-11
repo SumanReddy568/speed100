@@ -79,8 +79,12 @@ window.PopupEvents = {
             window.PopupNetwork.updateInfo(state.networkInfoCache);
           } else {
             console.log("Test completed successfully");
-            // Mark that a test has been completed
-            chrome.storage.local.set({ hasRunFirstTest: true });
+            // Count completed tests; the feedback prompt appears once enough have run.
+            chrome.storage.local.get("testsRun", ({ testsRun = 0 }) => {
+              chrome.storage.local.set({ testsRun: testsRun + 1 }, () =>
+                this.checkFeedbackStatus(),
+              );
+            });
 
             elements.testStatus.style.color = "#4285f4";
           }
