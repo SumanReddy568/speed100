@@ -82,11 +82,6 @@ window.PopupEvents = {
             // Mark that a test has been completed
             chrome.storage.local.set({ hasRunFirstTest: true });
 
-            // After successful test, show feedback rating and require feedback for next test
-            state.feedbackSubmitted = false;
-            chrome.storage.local.set({ feedbackSubmitted: false });
-            console.log("Requiring feedback for next test");
-
             elements.testStatus.style.color = "#4285f4";
           }
         }, 15000);

@@ -62,6 +62,12 @@ window.FeedbackService = {
     if (!elements.feedbackRatingContainer) return;
 
     try {
+      const { feedbackSubmitted } = await chrome.storage.local.get("feedbackSubmitted");
+      if (feedbackSubmitted) {
+        elements.feedbackRatingContainer.style.display = "none";
+        return;
+      }
+
       const { userId } = await this.getUserInfo();
 
       if (userId === "anonymous") {
@@ -70,6 +76,8 @@ window.FeedbackService = {
       }
 
       const hasSubmitted = await this.checkFeedbackViaApi(userId, /* fallback show */ false);
+      // Cache server-side truth so later opens don't depend on the API.
+      if (hasSubmitted) chrome.storage.local.set({ feedbackSubmitted: true });
       elements.feedbackRatingContainer.style.display = hasSubmitted ? "none" : "block";
     } catch (error) {
       console.warn("FeedbackService: Failed to check feedback status:", error);
@@ -100,8 +108,8 @@ window.FeedbackService = {
         localFeedbackSubmitted: result.feedbackSubmitted,
       });
 
-      // Always allow the very first test
-      if (!hasRunFirstTest) {
+      // Always allow the very first test, and anyone who already gave feedback
+      if (!hasRunFirstTest || result.feedbackSubmitted) {
         console.log("FeedbackService: Allowing first test");
         return true;
       }
