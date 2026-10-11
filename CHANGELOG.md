@@ -1,3 +1,6 @@
+## [1.4.3] - 2026-10-11
+- feat: ask for feedback after 10 speed tests instead of the first
+
 ## [1.4.2] - 2026-06-16
 - fix: avoid xargs in zip_extension.sh to handle apostrophes in commit messages
 
