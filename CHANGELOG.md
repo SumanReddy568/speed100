@@ -1,3 +1,6 @@
+## [1.4.5] - 2026-10-20
+- fix: point extension at production Catalyst speed server
+
 ## [1.4.4] - 2026-10-20
 - feat: use Zoho Catalyst speed server first, fall back to Cloudflare
 
