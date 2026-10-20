@@ -14,6 +14,7 @@ const CORS = {
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Cache-Control': 'no-store',
+    'Timing-Allow-Origin': '*', // lets the extension read DNS/connect timings for these requests
 };
 
 const log = (level, fields) => console[level === 'error' ? 'error' : 'log'](JSON.stringify({ ts: new Date().toISOString(), level, ...fields }));

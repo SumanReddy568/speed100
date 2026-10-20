@@ -81,6 +81,10 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             if (m.bloat      !== undefined) networkInfo.bloat      = m.bloat;
         }
 
+        // Fresh resource-timing buffer, so step 4 reads the DNS lookup of *this*
+        // run's first Catalyst request (the long-lived SW would otherwise fill it).
+        performance.clearResourceTimings?.();
+
         // ── 1. Network Information API ────────────────────────────────────────
         const conn = (typeof navigator !== 'undefined')
             && (navigator.connection || navigator.mozConnection || navigator.webkitConnection);
@@ -210,26 +214,21 @@ SpeedTest.prototype.getNetworkInfo = async function () {
             ));
         }
 
-        // ── 4. DNS latency — fixed target, works in every context ────────────
-        try {
-            const dnsStart = performance.now();
-            const dnsRes   = await Promise.race([
-                fetch('https://dns.google/resolve?name=cloudflare.com&type=A', { mode: 'cors', cache: 'no-store' }),
-                new Promise((_, r) => setTimeout(() => r(new Error('dns timeout')), 3_000)),
-            ]);
-            if (dnsRes.ok) {
-                networkInfo.dns       = 'Google DoH';
-                networkInfo.dnsLatency = Math.round(performance.now() - dnsStart);
-            }
-        } catch (e) {
-            console.warn('DNS latency failed:', e.message);
+        // ── 4. DNS latency — the user's resolver looking up the Catalyst host ─
+        //    Read from Resource Timing of the first Catalyst request this run
+        //    (needs Timing-Allow-Origin on the server). 0 ms = answered from cache.
+        const firstCatalyst = performance.getEntriesByType?.('resource')
+            .find(e => e.name.startsWith(self.CATALYST_BASE));
+        if (firstCatalyst) {
+            networkInfo.dns        = 'System DNS';
+            networkInfo.dnsLatency = Math.round(firstCatalyst.domainLookupEnd - firstCatalyst.domainLookupStart);
         }
 
         // ── 5. Bufferbloat — measured, not estimated ──────────────────────────
         //    Fire a small download to load the link, then measure RTT during load
         //    vs the idle baseline from testLatency().
         if (hasFresh && networkInfo.ping > 0) {
-            networkInfo.bloat = await this._measureBufferbloat(networkInfo.ping, latencyResult.base);
+            networkInfo.bloat = await this._measureBufferbloat(networkInfo.ping);
         }
 
         // ── 6. Local IP via RTCPeerConnection — properly awaited ─────────────
@@ -260,31 +259,21 @@ SpeedTest.prototype.getNetworkInfo = async function () {
 
 // ── testLatency ───────────────────────────────────────────────────────────────
 /**
- * Measures RTT using Cloudflare's CORS-enabled speed endpoint.
+ * Measures RTT against our Catalyst server only (no fallback, by design).
  * Collects 10 samples, trims the 2 fastest and 2 slowest (outlier removal),
  * then reports median of the remaining 6.
  *
- * Why Cloudflare __down?bytes=1 ?
+ * Why __down?bytes=1 ?
  *   - Returns real CORS headers → browser can time the response accurately.
  *   - 1-byte payload → transfer time is negligible; delta ≈ pure network RTT.
- *   - Available globally; extremely reliable.
  */
 SpeedTest.prototype.testLatency = async function () {
-    // Catalyst first; Cloudflare only if Catalyst can't give >= 3 samples.
-    const ENDPOINTS = [
-        { base: self.CATALYST_BASE,              name: 'Zoho Catalyst (India)', organization: 'Zoho Corporation' },
-        { base: 'https://speed.cloudflare.com', name: 'Cloudflare Speed',      organization: 'Cloudflare, Inc.' },
-    ];
-    let result;
-    for (const ep of ENDPOINTS) {
-        result = await this._latencyAgainst({ ...ep, url: `${ep.base}/__down?bytes=1` });
-        if (result.latency !== 'Unavailable') break;
-        console.warn(`Latency via ${ep.name} unavailable, trying next endpoint`);
-    }
-    return result;
-};
+    const ENDPOINT = {
+        url          : `${self.CATALYST_BASE}/__down?bytes=1`,
+        name         : 'Zoho Catalyst (India)',
+        organization : 'Zoho Corporation',
+    };
 
-SpeedTest.prototype._latencyAgainst = async function (ENDPOINT) {
     const TOTAL_SAMPLES   = 10;
     const TRIM_EACH_SIDE  =  2;   // discard 2 fastest + 2 slowest
     const SAMPLE_TIMEOUT  = 2_500; // ms
@@ -351,7 +340,6 @@ SpeedTest.prototype._latencyAgainst = async function (ENDPOINT) {
         loss      : lossPercentage,
         latency   : `${Math.round(ping)} ms`,
         serverInfo: { name: ENDPOINT.name, organization: ENDPOINT.organization },
-        base      : ENDPOINT.base,
     };
 };
 
@@ -362,11 +350,11 @@ SpeedTest.prototype._latencyAgainst = async function (ENDPOINT) {
  *   2. While it runs, take 5 RTT samples.
  *   3. Bloat = median(loaded RTT) − idle baseline.
  */
-SpeedTest.prototype._measureBufferbloat = async function (idlePingMs, base = 'https://speed.cloudflare.com') {
+SpeedTest.prototype._measureBufferbloat = async function (idlePingMs) {
     try {
         // Same server as the idle ping, so loaded − idle compares like with like.
-        const LOAD_URL  = `${base}/__down?bytes=${4 * 1024 * 1024}&_bloat=${Date.now()}`;
-        const PROBE_URL = `${base}/__down?bytes=1`;
+        const LOAD_URL  = `${self.CATALYST_BASE}/__down?bytes=${4 * 1024 * 1024}&_bloat=${Date.now()}`;
+        const PROBE_URL = `${self.CATALYST_BASE}/__down?bytes=1`;
         const SAMPLES   = 5;
 
         // Start the background load (fire-and-forget)

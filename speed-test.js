@@ -461,9 +461,8 @@ class SpeedTest {
     async measureBloat() {
         if (!this.baselinePing || this._bloatBlocked) return;
         try {
-            const onCatalyst = this.downloadEndpoints[this.currentDownloadEndpointIndex]?.type === 'catalyst';
             const start    = performance.now();
-            const response = await fetch(onCatalyst ? `${this.catalystBase}/ping` : 'https://speed.cloudflare.com/cdn-cgi/trace', {
+            const response = await fetch(`${this.catalystBase}/ping`, {
                 mode  : 'cors',
                 cache : 'no-store',
             });
