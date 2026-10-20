@@ -152,7 +152,29 @@ SpeedTest.prototype.getNetworkInfo = async function () {
                 };
             };
 
-            const result = await Promise.any([strategyA(), strategyB(), strategyC()])
+            // Catalyst /info first; the legacy race only runs if it fails or has no ISP/geo.
+            const catalyst = async () => {
+                const res = await race(fetch(`${self.CATALYST_BASE}/info`, { mode: 'cors', cache: 'no-store' }));
+                if (!res.ok) throw new Error(`catalyst ${res.status}`);
+                const d = await res.json();
+                if (!d.ip || !d.isp || !d.country) throw new Error('catalyst info incomplete');
+                return {
+                    ip : d.ip,
+                    geo: {
+                        country  : d.country,
+                        city     : d.city,
+                        region   : d.region,
+                        timezone : d.timezone,
+                        connection: { isp: d.isp, org: d.org },
+                    },
+                };
+            };
+
+            const result = await catalyst()
+                .catch(e => {
+                    console.warn('Catalyst info failed, using legacy lookups:', e.message);
+                    return Promise.any([strategyA(), strategyB(), strategyC()]);
+                })
                 .catch(() => null);
 
             if (result) {
@@ -207,7 +229,7 @@ SpeedTest.prototype.getNetworkInfo = async function () {
         //    Fire a small download to load the link, then measure RTT during load
         //    vs the idle baseline from testLatency().
         if (hasFresh && networkInfo.ping > 0) {
-            networkInfo.bloat = await this._measureBufferbloat(networkInfo.ping);
+            networkInfo.bloat = await this._measureBufferbloat(networkInfo.ping, latencyResult.base);
         }
 
         // ── 6. Local IP via RTCPeerConnection — properly awaited ─────────────
@@ -248,12 +270,21 @@ SpeedTest.prototype.getNetworkInfo = async function () {
  *   - Available globally; extremely reliable.
  */
 SpeedTest.prototype.testLatency = async function () {
-    const ENDPOINT = {
-        url          : 'https://speed.cloudflare.com/__down?bytes=1',
-        name         : 'Cloudflare Speed',
-        organization : 'Cloudflare, Inc.',
-    };
+    // Catalyst first; Cloudflare only if Catalyst can't give >= 3 samples.
+    const ENDPOINTS = [
+        { base: self.CATALYST_BASE,              name: 'Zoho Catalyst (India)', organization: 'Zoho Corporation' },
+        { base: 'https://speed.cloudflare.com', name: 'Cloudflare Speed',      organization: 'Cloudflare, Inc.' },
+    ];
+    let result;
+    for (const ep of ENDPOINTS) {
+        result = await this._latencyAgainst({ ...ep, url: `${ep.base}/__down?bytes=1` });
+        if (result.latency !== 'Unavailable') break;
+        console.warn(`Latency via ${ep.name} unavailable, trying next endpoint`);
+    }
+    return result;
+};
 
+SpeedTest.prototype._latencyAgainst = async function (ENDPOINT) {
     const TOTAL_SAMPLES   = 10;
     const TRIM_EACH_SIDE  =  2;   // discard 2 fastest + 2 slowest
     const SAMPLE_TIMEOUT  = 2_500; // ms
@@ -320,6 +351,7 @@ SpeedTest.prototype.testLatency = async function () {
         loss      : lossPercentage,
         latency   : `${Math.round(ping)} ms`,
         serverInfo: { name: ENDPOINT.name, organization: ENDPOINT.organization },
+        base      : ENDPOINT.base,
     };
 };
 
@@ -330,10 +362,11 @@ SpeedTest.prototype.testLatency = async function () {
  *   2. While it runs, take 5 RTT samples.
  *   3. Bloat = median(loaded RTT) − idle baseline.
  */
-SpeedTest.prototype._measureBufferbloat = async function (idlePingMs) {
+SpeedTest.prototype._measureBufferbloat = async function (idlePingMs, base = 'https://speed.cloudflare.com') {
     try {
-        const LOAD_URL  = `https://speed.cloudflare.com/__down?bytes=${4 * 1024 * 1024}&_bloat=${Date.now()}`;
-        const PROBE_URL = `https://speed.cloudflare.com/__down?bytes=1`;
+        // Same server as the idle ping, so loaded − idle compares like with like.
+        const LOAD_URL  = `${base}/__down?bytes=${4 * 1024 * 1024}&_bloat=${Date.now()}`;
+        const PROBE_URL = `${base}/__down?bytes=1`;
         const SAMPLES   = 5;
 
         // Start the background load (fire-and-forget)

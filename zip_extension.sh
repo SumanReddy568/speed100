@@ -83,6 +83,7 @@ zip -r "$ZIP_FILE" * \
     -x ".github/*" \
     -x "*.sh" \
     -x "$EXTENSIONS_DIR/*" \
+    -x "catalyst-server/*" \
     -x "README.md" \
     -x "CHANGELOG.md" \
     -x "PRIVACY_POLICY.md"

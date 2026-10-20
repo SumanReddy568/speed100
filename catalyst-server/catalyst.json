@@ -1,0 +1,5 @@
+{
+  "appsail": [
+    { "name": "speedtest", "source": "." }
+  ]
+}

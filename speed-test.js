@@ -67,12 +67,16 @@ class SpeedTest {
         this.uploadChunkSize   =  4 * 1024 * 1024; // 4 MB per upload request
 
         // ── Endpoints ─────────────────────────────────────────────────────────
+        // Catalyst first; if a stage measures nothing there, it re-runs on the next one.
+        this.catalystBase = self.CATALYST_BASE;
         this.downloadEndpoints = [
+            { type: 'catalyst'   },
             { type: 'cloudflare' },
             { type: 'hetzner'    },
         ];
         this.currentDownloadEndpointIndex = 0;
-        this.uploadEndpoint = 'https://speed.cloudflare.com/__up';
+        this.uploadEndpoints = [`${this.catalystBase}/__up`, 'https://speed.cloudflare.com/__up'];
+        this.uploadEndpoint  = this.uploadEndpoints[0];
 
         this.progressCallback = null;
 
@@ -90,6 +94,9 @@ class SpeedTest {
 
         if (ep.type === 'hetzner') {
             return `https://speed.hetzner.de/100MB.bin?t=${nonce}`;
+        }
+        if (ep.type === 'catalyst') {
+            return `${this.catalystBase}/__down?bytes=${bytes}&t=${nonce}`;
         }
         // default → cloudflare
         return `https://speed.cloudflare.com/__down?bytes=${bytes}&t=${nonce}`;
@@ -111,6 +118,17 @@ class SpeedTest {
     // ── Download test ────────────────────────────────────────────────────────
 
     async testDownloadSpeed() {
+        this.currentDownloadEndpointIndex = 0; // every run starts on Catalyst
+        this.downloadSpeed = 0;
+        await this._downloadOnce();
+        if (!this.downloadSpeed && this.switchToNextDownloadEndpoint()) {
+            console.warn('Catalyst download measured nothing, falling back to legacy endpoint');
+            await this._downloadOnce();
+        }
+        return this.downloadSpeed;
+    }
+
+    async _downloadOnce() {
         const testStart  = performance.now();
         const binMs      = this.binMs;
         const bins       = new Map(); // binIndex -> total bytes across ALL streams
@@ -192,6 +210,17 @@ class SpeedTest {
     // ── Upload test ──────────────────────────────────────────────────────────
 
     async testUploadSpeed() {
+        this.uploadSpeed = 0;
+        for (const endpoint of this.uploadEndpoints) {
+            this.uploadEndpoint = endpoint;
+            await this._uploadOnce();
+            if (this.uploadSpeed) break;
+            console.warn(`Upload to ${endpoint} measured nothing, trying next endpoint`);
+        }
+        return this.uploadSpeed;
+    }
+
+    async _uploadOnce() {
         const testStart = performance.now();
         const binMs     = this.binMs;
         const bins      = new Map(); // binIndex -> total bytes across ALL streams
@@ -432,8 +461,9 @@ class SpeedTest {
     async measureBloat() {
         if (!this.baselinePing || this._bloatBlocked) return;
         try {
+            const onCatalyst = this.downloadEndpoints[this.currentDownloadEndpointIndex]?.type === 'catalyst';
             const start    = performance.now();
-            const response = await fetch('https://speed.cloudflare.com/cdn-cgi/trace', {
+            const response = await fetch(onCatalyst ? `${this.catalystBase}/ping` : 'https://speed.cloudflare.com/cdn-cgi/trace', {
                 mode  : 'cors',
                 cache : 'no-store',
             });
