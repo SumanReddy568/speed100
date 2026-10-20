@@ -11,4 +11,4 @@ self.WORKER_BASE = "https://open-api-worker.sumanreddy568.workers.dev";
 
 // Our own speed-test origin (catalyst-server/) — tried first for speed, ping and
 // IP/ISP info; Cloudflare / Hetzner / ipwho etc. are the fallbacks.
-self.CATALYST_BASE = "https://speedtest-50047022332.development.catalystappsail.in";
+self.CATALYST_BASE = "https://speedtest-50047022332.catalystappsail.in";

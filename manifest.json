@@ -11,7 +11,7 @@
     "notifications"
   ],
   "host_permissions": [
-    "https://speedtest-50047022332.development.catalystappsail.in/*",
+    "https://speedtest-50047022332.catalystappsail.in/*",
     "https://speed.cloudflare.com/*",
     "https://speed.hetzner.de/*",
     "https://api.ipify.org/*",
