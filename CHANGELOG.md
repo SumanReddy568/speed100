@@ -1,3 +1,6 @@
+## [1.4.6] - 2026-10-20
+- feat: measure ping, jitter, loss, bloat and DNS against Catalyst only
+
 ## [1.4.5] - 2026-10-20
 - fix: point extension at production Catalyst speed server
 
