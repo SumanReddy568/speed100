@@ -1,3 +1,6 @@
+## [1.4.4] - 2026-10-20
+- feat: use Zoho Catalyst speed server first, fall back to Cloudflare
+
 ## [1.4.3] - 2026-10-11
 - feat: ask for feedback after 10 speed tests instead of the first
 
